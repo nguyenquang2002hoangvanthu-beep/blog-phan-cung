@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blog phần cứng</title>
 <meta property="og:title" content="Blog phần cứng">
-<meta name="description" content="Ba bài kỹ thuật phần cứng tuần 12/10/2026: đọc datasheet MOSFET, tính cuộn cảm mạch buck 12V→5V/3A và bảo vệ ngược cực cho mạch 12 V.">
+<meta name="description" content="Ba bài kỹ thuật phần cứng tuần 19/10/2026: layout mạch buck, nguồn và reset chống brownout cho ESP32, đo dòng bằng điện trở shunt.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>:root{
@@ -184,174 +184,155 @@ main{min-width:0}.post-body{overflow-wrap:anywhere}
 <header class="hero" id="top">
   <div class="hero-grid" aria-hidden="true"></div>
   <div class="hero-inner">
-    <p class="kicker">Blog kỹ thuật phần cứng · Tuần 12/10/2026</p>
-    <h1>Ba bài tuần này: <em>datasheet MOSFET</em>, <em>cuộn cảm mạch buck</em> và <em>chống ngược cực</em></h1>
-    <p class="hero-sub">Một bài nền tảng để chọn đúng MOSFET, một bài tính toán có số liệu cụ thể cho tầng công suất, và một bài so sánh 4 cách chống cắm ngược nguồn. Ba bài dùng chung kiến thức MOSFET, đọc theo thứ tự sẽ thấy chúng nối với nhau.</p>
-    <div class="cards"><a class="card a1" href="#a1"><span class="card-num">Bài 01 · Điện tử cơ bản</span>
-<strong>Giải mã datasheet MOSFET: 6 thông số quyết định bạn chọn đúng hay sai</strong><span class="card-meta">Mức Cơ bản · 10 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a2" href="#a2"><span class="card-num">Bài 02 · Điện tử công suất</span>
-<strong>Tính toán cuộn cảm cho mạch buck 12V→5V/3A từ A đến Z</strong><span class="card-meta">Mức Trung bình · 11 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a3" href="#a3"><span class="card-num">Bài 03 · Thiết kế nguồn</span>
-<strong>Bảo vệ ngược cực cho mạch 12 V: diode, P-MOSFET hay ideal diode controller?</strong><span class="card-meta">Mức Trung bình · 10 phút đọc</span><span class="card-go">Đọc bài →</span></a></div>
+    <p class="kicker">Blog kỹ thuật phần cứng · Tuần 2 · 19/10/2026</p>
+    <h1>Ba bài tuần này: <em>layout mạch buck</em>, <em>nguồn cho ESP32</em> và <em>đo dòng bằng shunt</em></h1>
+    <p class="hero-sub">Một bài về hot loop, nút SW và đường hồi tiếp để mạch buck chạy êm, một bài giúp ESP32 hết brownout từ phía nguồn và reset, và một bài đi sâu vào đo dòng chính xác bằng điện trở shunt cùng bộ khuếch đại đo dòng.</p>
+    <div class="cards"><a class="card a1" href="#a1"><span class="card-num">Bài 01 · Thiết kế PCB & Layout</span>
+<strong>Layout mạch buck: hot loop, nút SW và đường hồi tiếp làm đúng thế nào?</strong><span class="card-meta">Mức Trung bình · 10 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a2" href="#a2"><span class="card-num">Bài 02 · Phần cứng cho hệ thống nhúng</span>
+<strong>Thiết kế nguồn, reset và boot cho ESP32 để không bị brownout</strong><span class="card-meta">Mức Cơ bản · 9 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a3" href="#a3"><span class="card-num">Bài 03 · Mạch analog & đo lường</span>
+<strong>Đo dòng bằng điện trở shunt: chọn giá trị, low-side hay high-side, khuếch đại INA</strong><span class="card-meta">Mức Nâng cao · 11 phút đọc</span><span class="card-go">Đọc bài →</span></a></div>
   </div>
 </header>
 <div class="layout">
-  <nav class="toc" aria-label="Mục lục"><p class="toc-head">Mục lục</p><div class="toc-group a1"><a class="toc-title" href="#a1">Bài 01</a><ol><li><a href="#a1-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a1-vdsmax-điện-áp-chịu-đựng-đừng-dùng-sát-giới-hạn">VDS(max): điện áp chịu đựng, đừng dùng sát giới hạn</a></li><li><a href="#a1-idmax-con-số-dễ-gây-hiểu-lầm-nhất">ID(max): con số dễ gây hiểu lầm nhất</a></li><li><a href="#a1-rdson-phải-đọc-kèm-vgs-và-nhiệt-độ">RDS(on): phải đọc kèm VGS và nhiệt độ</a></li><li><a href="#a1-vgsth-không-phải-điện-áp-để-mở-mosfet">VGS(th): KHÔNG phải điện áp để mở MOSFET</a></li><li><a href="#a1-qg-qgd-thông-số-quyết-định-tốc-độ-đóng-cắt">Qg, Qgd: thông số quyết định tốc độ đóng cắt</a></li><li><a href="#a1-nhiệt-trở-rθ-và-bài-toán-nhiệt-độ-mối-nối">Nhiệt trở Rθ và bài toán nhiệt độ mối nối</a></li><li><a href="#a1-bổ-sung-đồ-thị-soa-khi-mosfet-làm-việc-ở-vùng-tuyến-tính">Bổ sung: đồ thị SOA khi MOSFET làm việc ở vùng tuyến tính</a></li><li><a href="#a1-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a1-tổng-kết">Tổng kết</a></li><li><a href="#a1-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a1-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a2"><a class="toc-title" href="#a2">Bài 02</a><ol><li><a href="#a2-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a2-thông-số-thiết-kế">Thông số thiết kế</a></li><li><a href="#a2-nguyên-lý-dòng-ripple-đến-từ-đâu">Nguyên lý: dòng ripple đến từ đâu</a></li><li><a href="#a2-tại-sao-chọn-ripple-2040">Tại sao chọn ripple 20–40%?</a></li><li><a href="#a2-tính-giá-trị-điện-cảm">Tính giá trị điện cảm</a></li><li><a href="#a2-dòng-đỉnh-dòng-rms-và-dòng-bão-hòa">Dòng đỉnh, dòng RMS và dòng bão hòa</a></li><li><a href="#a2-tổn-hao-trên-cuộn-cảm">Tổn hao trên cuộn cảm</a></li><li><a href="#a2-kiểm-tra-nhanh-ảnh-hưởng-tới-tụ-ra">Kiểm tra nhanh ảnh hưởng tới tụ ra</a></li><li><a href="#a2-chế-độ-tải-nhẹ">Chế độ tải nhẹ</a></li><li><a href="#a2-chọn-linh-kiện-thực-tế">Chọn linh kiện thực tế</a></li><li><a href="#a2-lưu-ý-layout">Lưu ý layout</a></li><li><a href="#a2-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a2-tổng-kết">Tổng kết</a></li><li><a href="#a2-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a2-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a3"><a class="toc-title" href="#a3">Bài 03</a><ol><li><a href="#a3-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a3-thông-số-bài-toán">Thông số bài toán</a></li><li><a href="#a3-phương-án-1-diode-nối-tiếp">Phương án 1: Diode nối tiếp</a></li><li><a href="#a3-phương-án-2-diode-song-song-cầu-chì">Phương án 2: Diode song song + cầu chì</a></li><li><a href="#a3-phương-án-3-p-mosfet-ở-đường-dương">Phương án 3: P-MOSFET ở đường dương</a></li><li><a href="#a3-phương-án-4-ideal-diode-controller-n-mosfet">Phương án 4: Ideal diode controller + N-MOSFET</a></li><li><a href="#a3-so-sánh-tổng-hợp">So sánh tổng hợp</a></li><li><a href="#a3-lưu-ý-layout-và-thực-tế">Lưu ý layout và thực tế</a></li><li><a href="#a3-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a3-tổng-kết">Tổng kết</a></li><li><a href="#a3-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a3-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div></nav>
+  <nav class="toc" aria-label="Mục lục"><p class="toc-head">Mục lục</p><div class="toc-group a1"><a class="toc-title" href="#a1">Bài 01</a><ol><li><a href="#a1-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a1-dòng-nào-đáng-sợ-nhất-trong-mạch-buck">Dòng nào đáng sợ nhất trong mạch buck?</a></li><li><a href="#a1-hot-loop-tính-để-thấy-nó-quan-trọng-cỡ-nào">Hot loop: tính để thấy nó quan trọng cỡ nào</a></li><li><a href="#a1-nút-sw-nhỏ-chắc-nhưng-không-quá-nhỏ">Nút SW: nhỏ, chắc, nhưng không quá nhỏ</a></li><li><a href="#a1-đường-hồi-tiếp-fb-nhạy-hơn-bạn-nghĩ">Đường hồi tiếp FB: nhạy hơn bạn nghĩ</a></li><li><a href="#a1-thứ-tự-đặt-linh-kiện">Thứ tự đặt linh kiện</a></li><li><a href="#a1-cảnh-báo-an-toàn-và-thực-tế">Cảnh báo an toàn và thực tế</a></li><li><a href="#a1-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a1-tổng-kết">Tổng kết</a></li><li><a href="#a1-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a1-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a2"><a class="toc-title" href="#a2">Bài 02</a><ol><li><a href="#a2-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a2-vì-sao-esp32-dễ-bị-brownout">Vì sao ESP32 dễ bị brownout</a></li><li><a href="#a2-chọn-bộ-ổn-áp-3v3">Chọn bộ ổn áp 3V3</a></li><li><a href="#a2-tính-tụ-bulk-bao-nhiêu-là-đủ">Tính tụ bulk: bao nhiêu là đủ?</a></li><li><a href="#a2-mạch-reset-chân-en">Mạch reset: chân EN</a></li><li><a href="#a2-strapping-pin-chân-quyết-định-chế-độ-boot">Strapping pin: chân quyết định chế độ boot</a></li><li><a href="#a2-các-lưu-ý-khác-để-tránh-brownout">Các lưu ý khác để tránh brownout</a></li><li><a href="#a2-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a2-tổng-kết">Tổng kết</a></li><li><a href="#a2-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a2-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a3"><a class="toc-title" href="#a3">Bài 03</a><ol><li><a href="#a3-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a3-chọn-giá-trị-điện-trở-shunt-bài-toán-cân-bằng">Chọn giá trị điện trở shunt: bài toán cân bằng</a></li><li><a href="#a3-low-side-hay-high-side">Low-side hay high-side?</a></li><li><a href="#a3-ảnh-hưởng-của-cmrr-trong-high-side">Ảnh hưởng của CMRR trong high-side</a></li><li><a href="#a3-sai-số-offset-kẻ-thù-ở-dòng-nhỏ">Sai số offset: kẻ thù ở dòng nhỏ</a></li><li><a href="#a3-sai-số-của-chính-shunt">Sai số của chính shunt</a></li><li><a href="#a3-kết-nối-kelvin-sai-số-lớn-nhất-do-layout">Kết nối Kelvin: sai số lớn nhất do layout</a></li><li><a href="#a3-lọc-và-chọn-khuếch-đại">Lọc và chọn khuếch đại</a></li><li><a href="#a3-cảnh-báo-an-toàn">Cảnh báo an toàn</a></li><li><a href="#a3-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a3-tổng-kết">Tổng kết</a></li><li><a href="#a3-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a3-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div></nav>
   <main>
 <article id="a1" class="post a1">
   <header class="post-head">
     <div class="post-num">Bài 01</div>
-    <div class="chips"><span class="chip cat">Điện tử cơ bản</span><span class="chip lvl">Mức Cơ bản</span><span class="chip">⏱ 10 phút đọc</span></div>
-    <h2 class="post-title">Giải mã datasheet MOSFET: 6 thông số quyết định bạn chọn đúng hay sai</h2>
-    <p class="lede">Đọc datasheet MOSFET đúng cách: VDS, ID, RDS(on), VGS(th), Qg và nhiệt trở. Kèm ví dụ tính tổn hao, nhiệt độ mối nối và các bẫy hay gặp khi chọn MOSFET.</p>
-    <ul class="tags"><li>#MOSFET</li><li>#datasheet</li><li>#RDS(on)</li><li>#gate charge</li><li>#tản nhiệt</li><li>#chọn linh kiện</li></ul>
+    <div class="chips"><span class="chip cat">Thiết kế PCB & Layout</span><span class="chip lvl">Mức Trung bình</span><span class="chip">⏱ 10 phút đọc</span></div>
+    <h2 class="post-title">Layout mạch buck: hot loop, nút SW và đường hồi tiếp làm đúng thế nào?</h2>
+    <p class="lede">Layout mạch buck đúng cách: tối thiểu hóa vòng hot loop, giữ nút SW nhỏ gọn, bố trí đường hồi tiếp FB và chọn độ rộng đường dòng, kèm số liệu tính cụ thể.</p>
+    <ul class="tags"><li>#layout PCB</li><li>#buck converter</li><li>#hot loop</li><li>#nút SW</li><li>#EMI</li><li>#đường FB</li></ul>
   </header>
-  <div class="post-body"><p>Gần như ai mới làm phần cứng cũng từng trải qua cảnh này: chọn một con MOSFET “60 V, 50 A” cho tải chỉ 5 A, lắp vào mạch, bật lên thì MOSFET nóng bỏng tay, thậm chí cháy. Trang đầu datasheet trông rất hoành tráng, nhưng các con số trên đó được đo ở điều kiện lý tưởng mà mạch thật của bạn không bao giờ có. Bài này đi qua 6 thông số quan trọng nhất trong datasheet MOSFET, giải thích chúng thực sự nói gì, và cách dùng chúng để tính tổn hao và nhiệt độ trước khi hàn linh kiện lên board.</p><div class="stats"><div class="stat"><b>≈ 98 °C</b><span>T<sub>J</sub> khi MOSFET chạy 5 A không tản nhiệt</span></div><div class="stat"><b>× 1,5</b><span>R<sub>DS(on)</sub> ở 100 °C so với 25 °C</span></div><div class="stat"><b>250 µA</b><span>dòng đo V<sub>GS(th)</sub>: chưa phải là “mở”</span></div><div class="stat"><b>0,36 W</b><span>tổn hao đóng cắt ở 24 V/5 A/100 kHz</span></div></div>
+  <div class="post-body"><p>Cùng một sơ đồ nguyên lý, cùng một IC buck, nhưng hai board layout khác nhau có thể cho kết quả hoàn toàn khác: một board chạy êm, ripple vài chục mV, còn board kia có xung nhọn trên nút SW, điện áp ra nhảy lung tung, không qua nổi bài thử EMI. Lý do gần như luôn nằm ở ba chỗ: vòng dòng nóng (hot loop), nút SW và đường hồi tiếp. Bài này giải thích vì sao ba chỗ đó quan trọng bằng số liệu cụ thể, rồi đưa ra thứ tự ưu tiên khi đặt linh kiện và đi dây cho mạch buck 12 V → 5 V/3 A.</p><div class="stats"><div class="stat"><b>6 V → 1,8 V</b><span>đỉnh vọt nút SW khi hot loop 10 nH → 3 nH</span></div><div class="stat"><b>≈ 113 MHz</b><span>tần số ringing với C<sub>OSS</sub> 200 pF</span></div><div class="stat"><b>≈ 1,4 mm</b><span>bề rộng đường 3 A, ΔT 10 °C, đồng 1 oz</span></div><div class="stat"><b>4,984 V</b><span>V<sub>OUT</sub> với cầu chia 52,3k/10k, V<sub>REF</sub> 0,8 V</span></div></div>
 <section id="a1-kiến-thức-nền-cần-có" class="level2 basics">
 <h2>Kiến thức nền cần có</h2>
 <ul>
-<li>MOSFET kênh N (N-channel) dẫn khi điện áp giữa cực cổng và cực nguồn, gọi là <strong>VGS</strong> (gate-source voltage), đủ lớn. Dòng chạy từ drain (D) xuống source (S).</li>
-<li>Khi dẫn hoàn toàn, MOSFET hành xử gần giống một điện trở nhỏ, gọi là <strong>RDS(on)</strong> (điện trở dẫn drain-source).</li>
-<li>Công suất tiêu tán trên điện trở: P = I² × R (W, A, Ω).</li>
-<li>Nhiệt độ tăng thêm của linh kiện: ΔT = P × Rθ, trong đó <strong>Rθ</strong> là nhiệt trở (thermal resistance), đơn vị °C/W.</li>
+<li>Mạch buck đóng cắt dòng liên tục qua hai công tắc (hoặc một công tắc và một diode). Bài viết giả định buck đồng bộ: MOSFET phía cao Q1 và MOSFET phía thấp Q2 thường đã tích hợp trong IC.</li>
+<li>Điện cảm: V = L × di/dt. Mọi đoạn dây, đường mạch đều có điện cảm ký sinh (parasitic inductance), cỡ 1 nH cho mỗi mm đường mạch (ước lượng thô).</li>
+<li>Nếu cần ôn cách chọn cuộn cảm và các dạng sóng của buck, xem bài “Tính toán cuộn cảm cho mạch buck 12V→5V/3A từ A đến Z” cùng tuần trước.</li>
 </ul>
-<p>Bài này tập trung vào MOSFET kênh N dùng làm công tắc (load switch, low-side switch, mạch nguồn xung tần số vừa phải).</p>
 </section>
-<section id="a1-vdsmax-điện-áp-chịu-đựng-đừng-dùng-sát-giới-hạn" class="level2 ">
-<h2>1. VDS(max): điện áp chịu đựng, đừng dùng sát giới hạn</h2>
-<p><strong>VDS(max)</strong> (hay V(BR)DSS, breakdown voltage) là điện áp drain-source tối đa trước khi xảy ra đánh thủng. Vượt qua giá trị này dù chỉ trong vài chục nano giây cũng có thể làm hỏng linh kiện.</p>
-<div class="callout why"><span class="callout-tag">Tại sao</span><p>Tại sao không chọn sát? Vì điện áp thực tế trên drain không phải là điện áp nguồn DC bạn đọc trên đồng hồ. Khi MOSFET tắt, điện cảm ký sinh (parasitic inductance) của dây dẫn, đường mạch và chính tải tạo ra xung áp (voltage spike) theo công thức:</p></div>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>s</mi><mi>p</mi><mi>i</mi><mi>k</mi><mi>e</mi></mrow></msub><mo>=</mo><mi>L</mi><mo>⋅</mo><mfrac><mrow><mi>d</mi><mi>i</mi></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">V_{spike} = L \cdot \frac{di}{dt}</annotation></semantics></math></p>
+<section id="a1-dòng-nào-đáng-sợ-nhất-trong-mạch-buck" class="level2 ">
+<h2>1. Dòng nào đáng sợ nhất trong mạch buck?</h2>
+<p>Trong buck, có hai kiểu dòng với tính chất khác hẳn nhau:</p>
 <ul>
-<li>L: điện cảm ký sinh (H)</li>
-<li>di/dt: tốc độ thay đổi dòng khi tắt (A/s)</li>
+<li><strong>Dòng liên tục:</strong> dòng qua cuộn cảm L và tụ ra, là dòng tam giác với biên độ ripple nhỏ. Nó thay đổi chậm, ít gây nhiễu.</li>
+<li><strong>Dòng gián đoạn (xung):</strong> dòng đi từ tụ vào CIN qua Q1, rồi qua Q2 quay về CIN. Mỗi chu kỳ nó bật tắt giữa 0 và toàn bộ dòng tải trong vài nano giây.</li>
 </ul>
-<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ: chỉ 20 nH điện cảm ký sinh (khoảng vài cm dây), dòng 5 A tắt trong 50 ns:</p></div>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>s</mi><mi>p</mi><mi>i</mi><mi>k</mi><mi>e</mi></mrow></msub><mo>=</mo><mn>20</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mfrac><mn>5</mn><mrow><mn>50</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup></mrow></mfrac><mo>=</mo><mn>2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{spike} = 20 \times 10^{-9} \times \frac{5}{50 \times 10^{-9}} = 2\ \text{V}</annotation></semantics></math></p>
-<p>Với tải là cuộn dây (relay, motor, solenoid) không có diode dập, xung áp có thể lên hàng chục đến hàng trăm volt. Quy tắc thực tế: chọn VDS(max) ≥ 1,5 lần điện áp làm việc lớn nhất cho mạch 12–48 V, và luôn có đường thoát năng lượng cho tải cảm (diode freewheeling, TVS hoặc snubber).</p>
-<figure class="fig"><svg viewBox="0 0 720 270" role="img" aria-label="Dạng sóng VDS khi tắt tải cảm, có và không có diode dập" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="180" y="22" class="tx b" text-anchor="middle">Không có diode dập</text><line x1="40" y1="230" x2="330" y2="230" class="ln" marker-end="url(#arr)"/><line x1="40" y1="230" x2="40" y2="40" class="ln" marker-end="url(#arr)"/><text x="330" y="250" class="tm" text-anchor="end">t</text><text x="48" y="44" class="tm">V<tspan class="sub">DS</tspan></text><line x1="40" y1="170" x2="330" y2="170" class="mu dash"/><text x="326" y="164" class="tm" text-anchor="end">V<tspan class="sub">IN</tspan></text><line x1="40" y1="60" x2="330" y2="60" class="wr dash"/><text x="326" y="54" class="twr" text-anchor="end">V<tspan class="sub">DS(max)</tspan></text><path d="M40,225 L95,225 L105,48 L113,200 L121,120 L129,190 L137,150 L145,180 L155,160 L168,174 L185,168 L330,170" class="wr thick"/><circle cx="105" cy="48" r="5" class="fl-wr"/><text x="114" y="100" class="twr">đỉnh xung vượt V<tspan class="sub">DS(max)</tspan></text><text x="540" y="22" class="tx b" text-anchor="middle">Có diode dập (freewheeling)</text><line x1="400" y1="230" x2="690" y2="230" class="ln" marker-end="url(#arr)"/><line x1="400" y1="230" x2="400" y2="40" class="ln" marker-end="url(#arr)"/><text x="690" y="250" class="tm" text-anchor="end">t</text><text x="408" y="44" class="tm">V<tspan class="sub">DS</tspan></text><line x1="400" y1="170" x2="690" y2="170" class="mu dash"/><text x="686" y="164" class="tm" text-anchor="end">V<tspan class="sub">IN</tspan></text><line x1="400" y1="60" x2="690" y2="60" class="wr dash"/><text x="686" y="54" class="twr" text-anchor="end">V<tspan class="sub">DS(max)</tspan></text><path d="M400,225 L455,225 L468,162 L520,162 L530,170 L690,170" class="a1 thick"/><text x="472" y="150" class="ta1">kẹp ở V<tspan class="sub">IN</tspan> + V<tspan class="sub">F</tspan></text><text x="70" y="256" class="tm">MOSFET tắt</text><line x1="95" y1="236" x2="95" y2="244" class="mu"/><text x="430" y="256" class="tm">MOSFET tắt</text><line x1="455" y1="236" x2="455" y2="244" class="mu"/></svg><figcaption>Hình 1. Khi tắt tải cảm, điện cảm ký sinh tạo xung áp có thể vượt V<sub>DS(max)</sub>; diode dập kẹp điện áp ở V<sub>IN</sub> + V<sub>F</sub>.</figcaption></figure>
+<p>Vòng dòng gián đoạn này gọi là <strong>hot loop</strong> (vòng dòng nóng): CIN → Q1 → Q2 → CIN. Dòng xung có di/dt rất lớn nên mọi điện cảm ký sinh trong vòng này sinh ra xung áp lớn.</p>
+<figure class="fig"><svg viewBox="0 0 760 300" role="img" aria-label="Sơ đồ nguyên lý mạch buck đồng bộ" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="60" y1="70" x2="250" y2="70" class="ln"/><text x="40" y="75" class="tx b" text-anchor="end">V<tspan class="sub">IN</tspan></text><circle cx="60" cy="70" r="4" class="fl-ink"/><line x1="130" y1="70" x2="130" y2="130" class="ln"/><line x1="112" y1="130" x2="148" y2="130" class="ln thick"/><line x1="112" y1="140" x2="148" y2="140" class="ln thick"/><line x1="130" y1="140" x2="130" y2="240" class="ln"/><text x="105" y="140" class="tx" text-anchor="end">C<tspan class="sub">IN</tspan></text><line x1="250" y1="70" x2="250" y2="100" class="ln"/><rect x="228" y="100" width="44" height="40" rx="6" class="a1 fl-soft"/><text x="250" y="125" class="ta1 b" text-anchor="middle">Q1</text><line x1="250" y1="140" x2="250" y2="170" class="ln"/><circle cx="250" cy="170" r="6" class="fl-wr"/><text x="236" y="166" class="twr b" text-anchor="end">SW</text><line x1="250" y1="170" x2="250" y2="190" class="ln"/><rect x="228" y="190" width="44" height="40" rx="6" class="a1 fl-soft"/><text x="250" y="215" class="ta1 b" text-anchor="middle">Q2</text><line x1="250" y1="230" x2="250" y2="240" class="ln"/><line x1="250" y1="170" x2="350" y2="170" class="ln"/><path d="M350,170 q12,-24 24,0 q12,-24 24,0 q12,-24 24,0 q12,-24 24,0" class="a1 thick" fill="none"/><text x="398" y="138" class="ta1 b" text-anchor="middle">L = 6,8 µH</text><line x1="446" y1="170" x2="640" y2="170" class="ln"/><line x1="520" y1="170" x2="520" y2="195" class="ln"/><line x1="502" y1="195" x2="538" y2="195" class="ln thick"/><line x1="502" y1="205" x2="538" y2="205" class="ln thick"/><line x1="520" y1="205" x2="520" y2="240" class="ln"/><text x="548" y="206" class="tx">C<tspan class="sub">OUT</tspan></text><line x1="640" y1="170" x2="640" y2="185" class="ln"/><rect x="628" y="185" width="24" height="45" rx="3" class="ln fl-bg"/><line x1="640" y1="230" x2="640" y2="240" class="ln"/><text x="662" y="212" class="tx">R<tspan class="sub">LOAD</tspan></text><circle cx="640" cy="170" r="4" class="fl-ink"/><text x="660" y="165" class="tx b">V<tspan class="sub">OUT</tspan> 5 V / 3 A</text><line x1="130" y1="240" x2="640" y2="240" class="ln"/><text x="380" y="262" class="tm" text-anchor="middle">GND</text><path d="M140,80 L238,80 L238,232 L140,232 Z" class="wr dash" fill="none"/><text x="190" y="290" class="twr" text-anchor="middle">vòng dòng nóng (hot loop): C<tspan class="sub">IN</tspan> → Q1 → Q2</text><text x="60" y="40" class="tm">VIN 10,8–13,2 V · f<tspan class="sub">sw</tspan> = 500 kHz</text><rect x="262" y="150" width="390" height="96" rx="14" class="a1 thick dash" fill="none"/><text x="560" y="290" class="ta1" text-anchor="middle">vòng dòng liên tục (êm): L → C<tspan class="sub">OUT</tspan> → tải</text></svg><figcaption>Hình 1. Mạch buck đồng bộ: vòng dòng gián đoạn C<sub>IN</sub> → Q1 → Q2 → GND (đỏ) là hot loop, vòng dòng liên tục qua cuộn cảm và C<sub>OUT</sub> (xanh) ít nhạy hơn nhiều.</figcaption></figure>
 </section>
-<section id="a1-idmax-con-số-dễ-gây-hiểu-lầm-nhất" class="level2 ">
-<h2>2. ID(max): con số dễ gây hiểu lầm nhất</h2>
-<p>Trang đầu datasheet thường ghi ID rất lớn, ví dụ 40–50 A cho một con MOSFET vỏ TO-220. Nhưng hãy đọc kỹ điều kiện đo: hầu hết ghi <strong>TC = 25 °C</strong>, tức nhiệt độ vỏ (case) được giữ ở 25 °C. Điều này chỉ đạt được nếu gắn MOSFET lên một tản nhiệt vô hạn, điều không tồn tại trong thực tế.</p>
-<p>Nhiều hãng còn ghi chú thêm rằng giới hạn dòng do chân linh kiện (package limited) thấp hơn con số tính từ nhiệt. ID(max) về bản chất là kết quả tính ngược từ công suất tiêu tán tối đa, không phải dòng bạn được phép chạy liên tục.</p>
-<div class="callout tip"><span class="callout-tag">Quy tắc</span><p>Cách làm đúng: <strong>đừng chọn MOSFET theo ID</strong>. Hãy tính tổn hao từ RDS(on) và kiểm tra nhiệt độ mối nối (junction temperature) như ví dụ ở mục 6.</p></div>
+<section id="a1-hot-loop-tính-để-thấy-nó-quan-trọng-cỡ-nào" class="level2 ">
+<h2>2. Hot loop: tính để thấy nó quan trọng cỡ nào</h2>
+<p>Giả sử dòng tải 3 A bị Q1 ngắt trong khoảng 5 ns. Với điện cảm ký sinh của hot loop là 10 nH (khoảng vài cm đường mạch, đặt CIN xa IC):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>s</mi><mi>p</mi><mi>i</mi><mi>k</mi><mi>e</mi></mrow></msub><mo>=</mo><mi>L</mi><mo>⋅</mo><mfrac><mrow><mi>d</mi><mi>i</mi></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>=</mo><mn>10</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mfrac><mn>3</mn><mrow><mn>5</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup></mrow></mfrac><mo>=</mo><mn>6</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{spike} = L \cdot \frac{di}{dt} = 10 \times 10^{-9} \times \frac{3}{5 \times 10^{-9}} = 6\ \text{V}</annotation></semantics></math></p>
+<p>Xung 6 V chồng lên điện áp 12 V, nghĩa là nút SW có thể vọt lên khoảng 18 V hoặc hơn, vượt xa điện áp danh định. Với IC có điện áp chịu đựng tối đa chỉ 20 V, đây là vùng nguy hiểm. Nếu layout tốt hơn và hot loop chỉ còn 3 nH:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>s</mi><mi>p</mi><mi>i</mi><mi>k</mi><mi>e</mi></mrow></msub><mo>=</mo><mn>3</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mfrac><mn>3</mn><mrow><mn>5</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup></mrow></mfrac><mo>=</mo><mn>1,8</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{spike} = 3 \times 10^{-9} \times \frac{3}{5 \times 10^{-9}} = 1{,}8\ \text{V}</annotation></semantics></math></p>
+<p>Giảm điện cảm hot loop 3 lần cho xung áp giảm đúng 3 lần.</p>
+<p>Ngoài ra, điện cảm ký sinh này cộng hưởng với điện dung đầu ra của MOSFET (COSS). Với COSS khoảng 200 pF (giá trị giả định):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mi>r</mi><mi>i</mi><mi>n</mi><mi>g</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><msqrt><mrow><mi>L</mi><mo>⋅</mo><msub><mi>C</mi><mrow><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub></mrow></msqrt></mrow></mfrac><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><msqrt><mrow><mn>10</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>200</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>12</mn></mrow></msup></mrow></msqrt></mrow></mfrac><mo>≈</mo><mn>113</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">MHz</mtext></mrow><annotation encoding="application/x-tex">f_{ring} = \frac{1}{2\pi\sqrt{L \cdot C_{OSS}}} = \frac{1}{2\pi\sqrt{10 \times 10^{-9} \times 200 \times 10^{-12}}} \approx 113\ \text{MHz}</annotation></semantics></math></p>
+<p>Dao động tắt dần (ringing) ở khoảng 100–200 MHz là thủ phạm chính của nhiễu EMI băng rộng mà bạn đo được trong phòng thử. Hot loop càng nhỏ, tần số ringing càng cao và biên độ càng thấp, dễ lọc hơn.</p>
+<figure class="fig"><svg viewBox="0 0 760 270" role="img" aria-label="Dạng sóng nút SW với hot loop lớn và hot loop nhỏ" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="185" y="22" class="tx b" text-anchor="middle">Hot loop lớn (≈ 10 nH)</text><line x1="40" y1="240" x2="350" y2="240" class="ln" marker-end="url(#arr)"/><line x1="40" y1="240" x2="40" y2="36" class="ln" marker-end="url(#arr)"/><text x="350" y="260" class="tm" text-anchor="end">t</text><text x="48" y="40" class="tm">V<tspan class="sub">SW</tspan></text><line x1="40" y1="162" x2="350" y2="162" class="mu dash"/><text x="346" y="156" class="tm" text-anchor="end">V<tspan class="sub">IN</tspan> = 12 V</text><line x1="40" y1="60" x2="350" y2="60" class="wr dash"/><text x="346" y="76" class="twr" text-anchor="end">giới hạn IC ≈ 20 V</text><path d="M40,230 L100,230 L104,40 L112,206 L122,84 L134,196 L146,118 L160,178 L174,142 L190,170 L208,158 L230,162 L330,162" class="wr thick" fill="none"/><text x="124" y="48" class="twr">đỉnh ≈ 18 V (xung 6 V)</text><text x="210" y="96" class="twr">ringing ≈ 113 MHz</text><line x1="380" y1="20" x2="380" y2="250" class="grid"/><text x="565" y="22" class="tx b" text-anchor="middle">Hot loop nhỏ (≈ 3 nH)</text><line x1="420" y1="240" x2="730" y2="240" class="ln" marker-end="url(#arr)"/><line x1="420" y1="240" x2="420" y2="36" class="ln" marker-end="url(#arr)"/><text x="730" y="260" class="tm" text-anchor="end">t</text><text x="428" y="40" class="tm">V<tspan class="sub">SW</tspan></text><line x1="420" y1="162" x2="730" y2="162" class="mu dash"/><text x="726" y="156" class="tm" text-anchor="end">V<tspan class="sub">IN</tspan> = 12 V</text><line x1="420" y1="60" x2="730" y2="60" class="wr dash"/><text x="726" y="76" class="twr" text-anchor="end">giới hạn IC ≈ 20 V</text><path d="M420,230 L480,230 L484,146 L496,176 L510,163 L526,169 L544,162 L710,162" class="a1 thick" fill="none"/><text x="510" y="130" class="ta1">đỉnh ≈ 13,8 V (xung 1,8 V)</text></svg><figcaption>Hình 2. Điện áp nút SW: hot loop lớn (10 nH) cho đỉnh vọt khoảng 6 V và ringing ~113 MHz, hot loop nhỏ (3 nH) chỉ còn khoảng 1,8 V.</figcaption></figure>
+<section id="a1-cách-thu-nhỏ-hot-loop" class="level3">
+<h3>Cách thu nhỏ hot loop</h3>
+<ol type="1">
+<li><strong>Đặt CIN sát chân VIN và GND của IC trước tiên</strong>, ưu tiên cao hơn cả cuộn cảm. Dùng tụ ceramic nhỏ (ví dụ 0,1–1 µF) đặt sát nhất, tụ lớn hơn đặt phía sau.</li>
+<li><strong>Đường nối giữa CIN và IC ngắn và rộng</strong>, tốt nhất đi trên cùng một lớp, không xuyên qua via nếu tránh được.</li>
+<li><strong>Dùng lớp GND liền khối ngay bên dưới</strong> hot loop (lớp 2 trên board 4 lớp, hoặc mặt dưới trên board 2 lớp). Dòng quay về có xu hướng chạy ngay bên dưới đường đi để diện tích vòng nhỏ nhất, vì vậy mặt phẳng GND không bị cắt xẻ là điều kiện cần.</li>
+<li>Với board 4 lớp, đặt lớp GND ngay sát lớp linh kiện (khoảng cách lớp mỏng) giúp diện tích vòng nhỏ hơn.</li>
+</ol>
+<div class="callout why"><span class="callout-tag">Tại sao</span><p>Tại sao diện tích vòng lại là yếu tố then chốt? Điện cảm của một vòng dây xấp xỉ tỉ lệ với diện tích mà nó bao quanh, và trường điện từ phát xạ cũng tỉ lệ với diện tích đó. Giảm diện tích vòng vừa giảm xung áp, vừa giảm phát xạ.</p></div>
 </section>
-<section id="a1-rdson-phải-đọc-kèm-vgs-và-nhiệt-độ" class="level2 ">
-<h2>3. RDS(on): phải đọc kèm VGS và nhiệt độ</h2>
-<p>RDS(on) quyết định tổn hao dẫn (conduction loss):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>c</mi><mi>o</mi><mi>n</mi><mi>d</mi></mrow></msub><mo>=</mo><msubsup><mi>I</mi><mrow><mi>D</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>r</mi><mi>m</mi><mi>s</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mn>2</mn></msubsup><mo>×</mo><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub></mrow><annotation encoding="application/x-tex">P_{cond} = I_{D(rms)}^2 \times R_{DS(on)}</annotation></semantics></math></p>
+</section>
+<section id="a1-nút-sw-nhỏ-chắc-nhưng-không-quá-nhỏ" class="level2 ">
+<h2>3. Nút SW: nhỏ, chắc, nhưng không quá nhỏ</h2>
+<p>Nút SW (switching node) là điểm nối giữa Q1, Q2 và cuộn cảm. Điện áp ở đây là xung vuông 0 → VIN với tốc độ dốc rất lớn. Với VIN = 12 V và thời gian chuyển 5 ns:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mi>d</mi><mi>V</mi></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>=</mo><mfrac><mn>12</mn><mn>5</mn></mfrac><mo>=</mo><mn>2,4</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V/ns</mtext></mrow><annotation encoding="application/x-tex">\frac{dV}{dt} = \frac{12}{5} = 2{,}4\ \text{V/ns}</annotation></semantics></math></p>
+<p>Đây là nguồn nhiễu mạnh nhất trên board. Hai nguyên tắc mâu thuẫn nhau cần cân bằng:</p>
 <ul>
-<li>ID(rms): dòng hiệu dụng qua MOSFET (A)</li>
-<li>RDS(on): điện trở dẫn tại điều kiện làm việc thực (Ω)</li>
+<li><strong>Nhỏ về diện tích đồng:</strong> diện tích đồng lớn của nút SW hoạt động như một bản cực tụ điện phát xạ nhiễu điện trường ra xung quanh và ghép vào mọi tín hiệu gần đó.</li>
+<li><strong>Đủ rộng để chịu dòng:</strong> nút SW mang cả dòng tải 3 A, đường mạch quá hẹp sẽ nóng và tăng điện cảm.</li>
 </ul>
-<p>Hai bẫy thường gặp:</p>
-<div class="callout warn"><span class="callout-tag">Bẫy</span><p><strong>Bẫy 1: RDS(on) phụ thuộc VGS.</strong> Datasheet thường ghi RDS(on) ở VGS = 10 V. Nếu bạn lái gate bằng 5 V hay 3,3 V, RDS(on) sẽ lớn hơn nhiều, hoặc MOSFET không mở hoàn toàn. Một số MOSFET loại “logic level” ghi thêm RDS(on) ở VGS = 4,5 V hoặc 5 V; chỉ dùng con số ở đúng mức VGS mà mạch của bạn cung cấp.</p></div>
-<div class="callout warn"><span class="callout-tag">Bẫy</span><p><strong>Bẫy 2: RDS(on) tăng theo nhiệt độ.</strong> Với MOSFET silicon, RDS(on) ở 100 °C thường cao hơn khoảng 1,5 lần so với ở 25 °C, ở 150 °C có thể gần gấp đôi. Datasheet có đồ thị “Normalized RDS(on) vs. Temperature”, hãy lấy hệ số từ đồ thị đó thay vì đoán.</p></div>
-<figure class="fig"><svg viewBox="0 0 700 290" role="img" aria-label="Đồ thị RDS(on) chuẩn hóa theo nhiệt độ mối nối" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="70" y1="240" x2="70" y2="246" class="ln"/><text x="70" y="262" class="tm" text-anchor="middle">-50</text><line x1="200" y1="240" x2="200" y2="246" class="ln"/><text x="200" y="262" class="tm" text-anchor="middle">0</text><line x1="265" y1="240" x2="265" y2="246" class="ln"/><text x="265" y="262" class="tm" text-anchor="middle">25</text><line x1="330" y1="240" x2="330" y2="246" class="ln"/><text x="330" y="262" class="tm" text-anchor="middle">50</text><line x1="460" y1="240" x2="460" y2="246" class="ln"/><text x="460" y="262" class="tm" text-anchor="middle">100</text><line x1="590" y1="240" x2="590" y2="246" class="ln"/><text x="590" y="262" class="tm" text-anchor="middle">150</text><line x1="64" y1="240" x2="70" y2="240" class="ln"/><text x="58" y="244" class="tm" text-anchor="end">0.5</text><line x1="70" y1="240" x2="660" y2="240" class="grid"/><line x1="64" y1="190" x2="70" y2="190" class="ln"/><text x="58" y="194" class="tm" text-anchor="end">1.0</text><line x1="70" y1="190" x2="660" y2="190" class="grid"/><line x1="64" y1="140" x2="70" y2="140" class="ln"/><text x="58" y="144" class="tm" text-anchor="end">1.5</text><line x1="70" y1="140" x2="660" y2="140" class="grid"/><line x1="64" y1="90" x2="70" y2="90" class="ln"/><text x="58" y="94" class="tm" text-anchor="end">2.0</text><line x1="70" y1="90" x2="660" y2="90" class="grid"/><line x1="70" y1="240" x2="680" y2="240" class="ln" marker-end="url(#arr)"/><line x1="70" y1="240" x2="70" y2="30" class="ln" marker-end="url(#arr)"/><text x="680" y="260" class="tm" text-anchor="end">T<tspan class="sub">J</tspan> (°C)</text><text x="78" y="34" class="tm">R<tspan class="sub">DS(on)</tspan> chuẩn hóa</text><path d="M70.0,215.0 L200.0,200.0 L265.0,190.0 L330.0,175.0 L395.0,158.0 L460.0,140.0 L525.0,115.0 L590.0,90.0 L655.0,65.0" class="ln thick"/><line x1="265.0" y1="240" x2="265.0" y2="190.0" class="a1 dash"/><circle cx="265.0" cy="190.0" r="5" class="fl-a1"/><text x="257.0" y="180.0" class="ta1 b" text-anchor="end">×1,0 @25 °C</text><line x1="460.0" y1="240" x2="460.0" y2="140.0" class="a1 dash"/><circle cx="460.0" cy="140.0" r="5" class="fl-a1"/><text x="452.0" y="130.0" class="ta1 b" text-anchor="end">×1,5 @100 °C</text><line x1="525.0" y1="240" x2="525.0" y2="115.0" class="a1 dash"/><circle cx="525.0" cy="115.0" r="5" class="fl-a1"/><text x="517.0" y="105.0" class="ta1 b" text-anchor="end">×1,75 @125 °C</text><text x="680" y="284" class="tm" text-anchor="end">Đường minh họa điển hình, số thật lấy từ datasheet linh kiện cụ thể</text></svg><figcaption>Hình 2. R<sub>DS(on)</sub> chuẩn hóa theo nhiệt độ mối nối: ở 100 °C điện trở dẫn khoảng 1,5 lần giá trị ở 25 °C.</figcaption></figure>
-</section>
-<section id="a1-vgsth-không-phải-điện-áp-để-mở-mosfet" class="level2 ">
-<h2>4. VGS(th): KHÔNG phải điện áp để mở MOSFET</h2>
-<p>Đây là hiểu lầm phổ biến nhất. <strong>VGS(th)</strong> (threshold voltage, điện áp ngưỡng) là điện áp mà tại đó MOSFET <em>bắt đầu</em> dẫn một dòng rất nhỏ, thường được định nghĩa ở ID = 250 µA. Ví dụ VGS(th) = 2–4 V nghĩa là tại 2–4 V, MOSFET chỉ cho chạy khoảng 0,25 mA, hoàn toàn chưa phải là “mở”.</p>
-<div class="callout note"><span class="callout-tag">Nhận xét</span><p>Hệ quả thực tế: một MOSFET có VGS(th) max = 4 V, lái trực tiếp từ chân GPIO 3,3 V của vi điều khiển, có thể không dẫn chút nào ở mẫu linh kiện xấu nhất, hoặc dẫn ở vùng tuyến tính và nóng rất nhanh.</p></div>
-<div class="callout tip"><span class="callout-tag">Quy tắc</span><p>Quy tắc: điện áp lái gate nên bằng mức VGS mà datasheet dùng để đảm bảo RDS(on). Nếu chỉ có 3,3 V, hãy chọn MOSFET có RDS(on) được đảm bảo ở VGS ≤ 2,5–3 V, hoặc dùng một tầng gate driver/level shifter.</p></div>
-<p>Ngược lại, cũng cần chú ý <strong>VGS(max)</strong>, thường là ±20 V. Lái gate bằng 24 V trực tiếp sẽ phá hỏng lớp oxit gate.</p>
-</section>
-<section id="a1-qg-qgd-thông-số-quyết-định-tốc-độ-đóng-cắt" class="level2 ">
-<h2>5. Qg, Qgd: thông số quyết định tốc độ đóng cắt</h2>
-<p>Gate của MOSFET hành xử như một tụ điện. Để mở/tắt, mạch lái phải nạp/xả một lượng điện tích gọi là <strong>Qg</strong> (total gate charge). Trong đó <strong>Qgd</strong> (gate-drain charge, hay “Miller charge”) là phần điện tích cần cấp trong khoảng thời gian điện áp drain đang chuyển trạng thái, cũng chính là khoảng thời gian gây tổn hao đóng cắt.</p>
-<div class="callout why"><span class="callout-tag">Tại sao</span><p>Tại sao dùng Qg thay vì điện dung Ciss? Vì điện dung của MOSFET thay đổi mạnh theo VDS, còn Qg đã tính gộp hiệu ứng đó ở một điều kiện đo cụ thể, dùng để tính toán dễ và đúng hơn.</p></div>
-<p>Ba công thức hay dùng:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>G</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>a</mi><mi>v</mi><mi>g</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>=</mo><msub><mi>Q</mi><mi>g</mi></msub><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow><annotation encoding="application/x-tex">I_{G(avg)} = Q_g \times f_{sw}</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>d</mi><mi>r</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow></msub><mo>=</mo><msub><mi>Q</mi><mi>g</mi></msub><mo>×</mo><msub><mi>V</mi><mrow><mi>d</mi><mi>r</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow></msub><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow><annotation encoding="application/x-tex">P_{drive} = Q_g \times V_{drive} \times f_{sw}</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>≈</mo><mfrac><msub><mi>Q</mi><mrow><mi>g</mi><mi>d</mi></mrow></msub><msub><mi>I</mi><mi>G</mi></msub></mfrac></mrow><annotation encoding="application/x-tex">t_{sw} \approx \frac{Q_{gd}}{I_G}</annotation></semantics></math></p>
-<ul>
-<li>fsw: tần số đóng cắt (Hz)</li>
-<li>Vdrive: điện áp lái gate (V)</li>
-<li>IG: dòng mà mạch lái cấp được trong giai đoạn Miller (A)</li>
-</ul>
-<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ: Qg = 40 nC, Vdrive = 12 V, fsw = 100 kHz:</p></div>
-<ul>
-<li>Dòng trung bình mạch lái: 40 × 10⁻⁹ × 100 × 10³ = 4 mA</li>
-<li>Công suất mạch lái: 40 × 10⁻⁹ × 12 × 100 × 10³ = 0,048 W</li>
-</ul>
-<p>Con số trung bình nhỏ, nhưng dòng đỉnh lúc chuyển mạch có thể lên hàng trăm mA đến vài A. Đó là lý do chân GPIO (thường chỉ vài mA đến vài chục mA) không lái được MOSFET ở tần số cao: thời gian chuyển mạch kéo dài, tổn hao đóng cắt tăng vọt.</p>
-<p>Tổn hao đóng cắt ước lượng (cho tải cứng, hard switching):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>≈</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>×</mo><msub><mi>V</mi><mrow><mi>D</mi><mi>S</mi></mrow></msub><mo>×</mo><msub><mi>I</mi><mi>D</mi></msub><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>r</mi></msub><mo>+</mo><msub><mi>t</mi><mi>f</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow><annotation encoding="application/x-tex">P_{sw} \approx \frac{1}{2} \times V_{DS} \times I_D \times (t_r + t_f) \times f_{sw}</annotation></semantics></math></p>
-<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ: VDS = 24 V, ID = 5 A, tr + tf = 60 ns, fsw = 100 kHz:</p></div>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>≈</mo><mn>0,5</mn><mo>×</mo><mn>24</mn><mo>×</mo><mn>5</mn><mo>×</mo><mn>60</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>100</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>=</mo><mn>0,36</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{sw} \approx 0{,}5 \times 24 \times 5 \times 60 \times 10^{-9} \times 100 \times 10^{3} = 0{,}36\ \text{W}</annotation></semantics></math></p>
-<p>Đây là công thức gần đúng bậc nhất, đủ để so sánh phương án; khi cần chính xác hơn phải đo thực tế.</p>
-<figure class="fig"><svg viewBox="0 0 700 290" role="img" aria-label="Đồ thị gate charge: Qgs, Qgd (Miller plateau) và Qg tổng" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="70" y1="240" x2="680" y2="240" class="ln" marker-end="url(#arr)"/><line x1="70" y1="240" x2="70" y2="30" class="ln" marker-end="url(#arr)"/><text x="680" y="260" class="tm" text-anchor="end"></text><text x="78" y="34" class="tm">V<tspan class="sub">GS</tspan> (V)</text><rect x="230" y="40" width="190" height="200" class="fl-soft"/><path d="M70,240 L230,150 L420,150 L640,60" class="a1 thick"/><line x1="640" y1="60" x2="640" y2="240" class="mu dash"/><line x1="70" y1="60" x2="640" y2="60" class="mu dash"/><text x="62" y="64" class="tm" text-anchor="end">10</text><line x1="70" y1="150" x2="230" y2="150" class="mu dash"/><text x="62" y="154" class="tm" text-anchor="end">V<tspan class="sub">plateau</tspan></text><text x="325" y="138" class="ta1 b" text-anchor="middle">Miller plateau</text><text x="325" y="185" class="tm" text-anchor="middle">V<tspan class="sub">DS</tspan> đang chuyển trạng thái</text><text x="325" y="203" class="tm" text-anchor="middle">→ tổn hao đóng cắt xảy ra ở đây</text><line x1="72" y1="262" x2="228" y2="262" class="ln" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="150" y="280" class="tx b" text-anchor="middle">Q<tspan class="sub">gs</tspan></text><line x1="232" y1="262" x2="418" y2="262" class="a1" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="325" y="280" class="ta1 b" text-anchor="middle">Q<tspan class="sub">gd</tspan></text><line x1="72" y1="252" x2="638" y2="252" class="mu" marker-end="url(#arr)"/><text x="600" y="246" class="tx b" text-anchor="end">Q<tspan class="sub">g</tspan> tổng</text></svg><figcaption>Hình 3. Đồ thị gate charge: đoạn nằm ngang (Miller plateau) ứng với Q<sub>gd</sub>, là lúc tổn hao đóng cắt xảy ra.</figcaption></figure>
-</section>
-<section id="a1-nhiệt-trở-rθ-và-bài-toán-nhiệt-độ-mối-nối" class="level2 ">
-<h2>6. Nhiệt trở Rθ và bài toán nhiệt độ mối nối</h2>
-<p>Datasheet cho hai nhiệt trở quan trọng:</p>
-<ul>
-<li><strong>RθJC</strong> (junction-to-case): từ mối nối bán dẫn ra vỏ. Dùng khi có tản nhiệt.</li>
-<li><strong>RθJA</strong> (junction-to-ambient): từ mối nối ra không khí, khi không có tản nhiệt. Với linh kiện dán (SMD), giá trị này phụ thuộc rất nhiều vào diện tích đồng trên PCB, và hãng thường ghi rõ điều kiện đo (ví dụ trên một miếng đồng 1 inch²).</li>
-</ul>
-<p>Nhiệt độ mối nối:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>J</mi></msub><mo>=</mo><msub><mi>T</mi><mi>A</mi></msub><mo>+</mo><msub><mi>P</mi><mrow><mi>t</mi><mi>o</mi><mi>t</mi><mi>a</mi><mi>l</mi></mrow></msub><mo>×</mo><msub><mi>R</mi><mrow><mi>θ</mi><mi>J</mi><mi>A</mi></mrow></msub></mrow><annotation encoding="application/x-tex">T_J = T_A + P_{total} \times R_{\theta JA}</annotation></semantics></math></p>
-<section id="a1-ví-dụ-tính-toán-đầy-đủ" class="level3">
-<h3>Ví dụ tính toán đầy đủ</h3>
-<p>Bài toán: low-side switch đóng/ngắt một tải điện trở 5 A ở tần số thấp (bỏ qua tổn hao đóng cắt), nhiệt độ môi trường trong hộp TA = 40 °C. MOSFET vỏ TO-220, không tản nhiệt. Giả sử datasheet cho:</p>
-<ul>
-<li>RDS(on) = 25 mΩ tại VGS = 5 V, TJ = 25 °C</li>
-<li>Hệ số RDS(on) ở 100 °C ≈ 1,5 (lấy từ đồ thị)</li>
-<li>RθJA = 62 °C/W (giá trị điển hình cho vỏ TO-220, cần kiểm tra lại trong datasheet của linh kiện cụ thể)</li>
-</ul>
-<p>Bước 1, giả định TJ khoảng 100 °C:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><msup><mn>100</mn><mo>∘</mo></msup><mi>C</mi></mrow></msub><mo>=</mo><mn>25</mn><mo>×</mo><mn>1,5</mn><mo>=</mo><mn>37,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_{DS(on),100^\circ C} = 25 \times 1{,}5 = 37{,}5\ \text{m}\Omega</annotation></semantics></math></p>
-<p>Bước 2, tổn hao dẫn:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><msup><mn>5</mn><mn>2</mn></msup><mo>×</mo><mn>0,0375</mn><mo>=</mo><mn>0,94</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P = 5^2 \times 0{,}0375 = 0{,}94\ \text{W}</annotation></semantics></math></p>
-<p>Bước 3, nhiệt độ mối nối:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>J</mi></msub><mo>=</mo><mn>40</mn><mo>+</mo><mn>0,94</mn><mo>×</mo><mn>62</mn><mo>≈</mo><mn>98</mn><msup><mspace width="0.222em"></mspace><mo>∘</mo></msup><mtext mathvariant="normal">C</mtext></mrow><annotation encoding="application/x-tex">T_J = 40 + 0{,}94 \times 62 \approx 98\ ^\circ\text{C}</annotation></semantics></math></p>
-<p>Kết quả 98 °C khớp với giả định 100 °C ở bước 1, nên phép tính hội tụ. Nếu kết quả lệch nhiều so với giả định, lặp lại bước 1 với nhiệt độ mới.</p>
-<div class="callout note"><span class="callout-tag">Nhận xét</span><p>Nhận xét: 98 °C vẫn dưới TJ(max) = 150–175 °C nên MOSFET “sống”, nhưng vỏ rất nóng, không chạm tay được, và tuổi thọ các linh kiện xung quanh bị ảnh hưởng. Phương án tốt hơn: chọn MOSFET có RDS(on) nhỏ hơn (ví dụ 10 mΩ thì tổn hao còn khoảng 0,38 W) hoặc thêm tản nhiệt nhỏ. Cũng thấy rõ: một con MOSFET ghi “ID = 47 A” trên trang đầu đã ấm đáng kể chỉ với 5 A khi không có tản nhiệt.</p></div>
-<figure class="fig"><svg viewBox="0 0 620 330" role="img" aria-label="Sơ đồ mạch low-side switch dùng MOSFET kênh N" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="330" y1="40" x2="330" y2="70" class="ln"/><text x="330" y="30" class="tx b" text-anchor="middle">+12 V</text><line x1="310" y1="40" x2="350" y2="40" class="ln thick"/><rect x="315" y="70" width="30" height="60" rx="3" class="ln fl-bg"/><text x="360" y="105" class="tx">Tải 5 A (R<tspan class="sub">LOAD</tspan>)</text><line x1="330" y1="130" x2="330" y2="170" class="ln"/><text x="340" y="160" class="tm">D</text><line x1="330" y1="170" x2="310" y2="170" class="ln"/><line x1="310" y1="160" x2="310" y2="180" class="ln thick"/><line x1="310" y1="190" x2="310" y2="210" class="ln thick"/><line x1="310" y1="220" x2="310" y2="240" class="ln thick"/><line x1="310" y1="200" x2="330" y2="200" class="ln" marker-start="url(#arr)"/><line x1="310" y1="230" x2="330" y2="230" class="ln"/><line x1="330" y1="200" x2="330" y2="230" class="ln"/><line x1="300" y1="165" x2="300" y2="235" class="a1 thick"/><line x1="330" y1="230" x2="330" y2="280" class="ln"/><text x="340" y="262" class="tm">S</text><text x="360" y="205" class="ta1 b">Q1: N-MOSFET</text><text x="360" y="224" class="tm">R<tspan class="sub">DS(on)</tspan> đúng ở V<tspan class="sub">GS</tspan> thực tế</text><line x1="300" y1="200" x2="230" y2="200" class="ln"/><rect x="160" y="190" width="60" height="20" rx="3" class="ln fl-bg"/><line x1="220" y1="200" x2="230" y2="200" class="ln"/><text x="190" y="182" class="tx" text-anchor="middle">R<tspan class="sub">G</tspan> 10–100 Ω</text><line x1="160" y1="200" x2="90" y2="200" class="ln"/><rect x="20" y="180" width="70" height="40" rx="6" class="a1 fl-soft"/><text x="55" y="205" class="ta1 b" text-anchor="middle">MCU</text><circle cx="245" cy="200" r="3" class="fl-ink"/><line x1="245" y1="200" x2="245" y2="225" class="ln"/><rect x="235" y="225" width="20" height="45" rx="3" class="ln fl-bg"/><line x1="245" y1="270" x2="245" y2="280" class="ln"/><text x="200" y="252" class="tx" text-anchor="end">Pull-down 10 kΩ</text><text x="200" y="270" class="tm" text-anchor="end">giữ gate ở 0 khi MCU reset</text><line x1="245" y1="280" x2="330" y2="280" class="ln"/><line x1="287" y1="280" x2="287" y2="295" class="ln"/><line x1="272" y1="295" x2="302" y2="295" class="ln thick"/><line x1="278" y1="301" x2="296" y2="301" class="ln"/><line x1="284" y1="307" x2="290" y2="307" class="ln"/><text x="310" y="300" class="tm">GND</text></svg><figcaption>Hình 4. Mạch low-side switch dùng trong ví dụ tính nhiệt: điện trở gate hạn dòng nạp, điện trở pull-down giữ MOSFET tắt khi MCU reset.</figcaption></figure>
+<p>Giải pháp: dùng <strong>một mảng đồng ngắn, vừa đủ rộng</strong> nối chân SW của IC tới cuộn cảm, đặt cuộn cảm sát IC. Tuyệt đối không đổ đồng rộng cho nút SW “cho tản nhiệt”, vì phần tản nhiệt của buck nằm ở chân GND và VIN, không phải SW. Không đi tín hiệu nhạy bên dưới hoặc sát nút SW, kể cả ở lớp khác.</p>
+<section id="a1-độ-rộng-đường-dòng" class="level3">
+<h3>Độ rộng đường dòng</h3>
+<p>Với đồng 1 oz (độ dày 35 µm), điện trở một đoạn đường mạch rộng 1 mm, dài 10 mm là:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mi>ρ</mi><mfrac><mi>l</mi><mrow><mi>w</mi><mo>⋅</mo><mi>t</mi></mrow></mfrac><mo>=</mo><mn>1,72</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>8</mn></mrow></msup><mo>×</mo><mfrac><mrow><mn>0,01</mn></mrow><mrow><msup><mn>10</mn><mrow><mo>−</mo><mn>3</mn></mrow></msup><mo>×</mo><mn>35</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup></mrow></mfrac><mo>≈</mo><mn>4,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R = \rho \frac{l}{w \cdot t} = 1{,}72 \times 10^{-8} \times \frac{0{,}01}{10^{-3} \times 35 \times 10^{-6}} \approx 4{,}9\ \text{m}\Omega</annotation></semantics></math></p>
+<p>Ở 3 A, tổn hao là 3² × 0,0049 ≈ 44 mW, nhỏ. Nhưng độ rộng còn phải đáp ứng yêu cầu nhiệt. Công thức kinh nghiệm IPC-2221 cho đường mạch ngoài: I = 0,048 × ΔT^0,44 × A^0,725 (I tính bằng A, ΔT bằng °C, A là tiết diện bằng mil²). Với I = 3 A và cho phép tăng nhiệt ΔT = 10 °C, tiết diện cần khoảng 74 mil². Đồng 1 oz dày khoảng 1,38 mil, nên độ rộng khoảng 54 mil, tức khoảng 1,4 mm. Đây là công thức gần đúng, nên chọn rộng hơn thay vì sát giới hạn, và nên đối chiếu thêm với IPC-2152 nếu cần chính xác.</p>
+<figure class="fig"><svg viewBox="0 0 760 260" role="img" aria-label="Mặt cắt PCB: diện tích vòng khi lớp GND ở gần và ở xa" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="180" y="22" class="tx b" text-anchor="middle">GND ngay dưới lớp linh kiện</text><rect x="30" y="66" width="300" height="4" class="fl-cu"/><rect x="50" y="40" width="56" height="26" rx="4" class="fl-part"/><text x="78" y="58" class="tx b" text-anchor="middle">C<tspan class="sub">IN</tspan></text><rect x="234" y="36" width="70" height="30" rx="4" class="fl-ic"/><text x="269" y="56" font-weight="700" class="tx" text-anchor="middle" style="fill:var(--ic-ink)">IC</text><rect x="30" y="70" width="300" height="26" class="fl-soft"/><rect x="30" y="96" width="300" height="6" class="fl-cu"/><text x="34" y="118" class="tm">lớp GND</text><path d="M78,66 L269,66 L269,96 L78,96 Z" class="wr thick dash" fill="none"/><text x="174" y="88.0" class="twr b" text-anchor="middle">diện tích vòng</text><text x="180" y="238" class="ta1 b" text-anchor="middle">diện tích nhỏ → điện cảm nhỏ, phát xạ thấp</text><line x1="380" y1="20" x2="380" y2="250" class="grid"/><text x="570" y="22" class="tx b" text-anchor="middle">GND ở xa hoặc bị cắt xẻ</text><rect x="420" y="66" width="300" height="4" class="fl-cu"/><rect x="440" y="40" width="56" height="26" rx="4" class="fl-part"/><text x="468" y="58" class="tx b" text-anchor="middle">C<tspan class="sub">IN</tspan></text><rect x="624" y="36" width="70" height="30" rx="4" class="fl-ic"/><text x="659" y="56" font-weight="700" class="tx" text-anchor="middle" style="fill:var(--ic-ink)">IC</text><rect x="420" y="70" width="300" height="96" class="fl-soft"/><rect x="420" y="166" width="300" height="6" class="fl-cu"/><text x="424" y="188" class="tm">lớp GND</text><path d="M468,66 L659,66 L659,166 L468,166 Z" class="wr thick dash" fill="none"/><text x="564" y="123.0" class="twr b" text-anchor="middle">diện tích vòng</text><text x="570" y="238" class="twr b" text-anchor="middle">diện tích lớn → xung áp và nhiễu tăng</text></svg><figcaption>Hình 3. Mặt cắt PCB: GND liền ở lớp kề ngay dưới làm diện tích vòng dòng rất nhỏ, điện cảm hot loop giảm mạnh.</figcaption></figure>
 </section>
 </section>
-<section id="a1-bổ-sung-đồ-thị-soa-khi-mosfet-làm-việc-ở-vùng-tuyến-tính" class="level2 ">
-<h2>Bổ sung: đồ thị SOA khi MOSFET làm việc ở vùng tuyến tính</h2>
-<p><strong>SOA</strong> (Safe Operating Area, vùng làm việc an toàn) là đồ thị dòng theo áp cho biết MOSFET chịu được bao lâu ở mỗi tổ hợp VDS–ID. Nó đặc biệt quan trọng khi MOSFET không đóng cắt hoàn toàn mà làm việc ở vùng tuyến tính: mạch hạn dòng khởi động (inrush limiter), hot-swap, tải điện tử (electronic load), hoặc khi gate bị nạp chậm. Lưu ý các đường SOA trong datasheet thường vẽ ở TC = 25 °C; ở nhiệt độ cao hơn phải giảm định mức (derating).</p>
+<section id="a1-đường-hồi-tiếp-fb-nhạy-hơn-bạn-nghĩ" class="level2 ">
+<h2>4. Đường hồi tiếp FB: nhạy hơn bạn nghĩ</h2>
+<p>Chân <strong>FB</strong> (feedback) đo điện áp ra qua cầu chia điện trở để IC điều chỉnh. Ví dụ IC có điện áp tham chiếu 0,8 V, chọn R trên = 52,3 kΩ, R dưới = 10 kΩ:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>=</mo><msub><mi>V</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mfrac><msub><mi>R</mi><mrow><mi>t</mi><mi>o</mi><mi>p</mi></mrow></msub><msub><mi>R</mi><mrow><mi>b</mi><mi>o</mi><mi>t</mi></mrow></msub></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0,8</mn><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mfrac><mrow><mn>52,3</mn></mrow><mn>10</mn></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>4,98</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{OUT} = V_{ref}\left(1 + \frac{R_{top}}{R_{bot}}\right) = 0{,}8 \times \left(1 + \frac{52{,}3}{10}\right) \approx 4{,}98\ \text{V}</annotation></semantics></math></p>
+<p>Chân FB có trở kháng cao (hàng chục kΩ), nên rất dễ thu nhiễu. Giả sử có một điện dung ký sinh chỉ 0,1 pF giữa nút SW và nút FB. Mỗi lần SW nhảy 12 V, điện tích bơm vào nút FB là:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Q</mi><mo>=</mo><mi>C</mi><mo>⋅</mo><mi>Δ</mi><mi>V</mi><mo>=</mo><mn>0,1</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>12</mn></mrow></msup><mo>×</mo><mn>12</mn><mo>=</mo><mn>1,2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">pC</mtext></mrow><annotation encoding="application/x-tex">Q = C \cdot \Delta V = 0{,}1 \times 10^{-12} \times 12 = 1{,}2\ \text{pC}</annotation></semantics></math></p>
+<p>Nếu điện dung tổng của nút FB là khoảng 5 pF (giả định), xung này nâng điện áp tại FB lên 0,24 V, so với ngưỡng tham chiếu 0,8 V thì đây là nhiễu rất lớn. Hậu quả: IC “thấy” điện áp ra sai, đóng cắt không đều (jitter), ripple điện áp ra tăng, có khi dao động.</p>
+<div class="callout tip"><span class="callout-tag">Quy tắc</span><p>Quy tắc đi dây FB:</p></div>
+<ol type="1">
+<li><strong>Lấy điểm đo tại tụ ra COUT</strong> (hoặc tại tải nếu cần chính xác), không lấy gần cuộn cảm hoặc nút SW.</li>
+<li><strong>Đặt cầu chia điện trở sát chân FB của IC</strong>, để đoạn dây trở kháng cao càng ngắn càng tốt, còn đoạn dài (từ COUT về) là dây có trở kháng thấp.</li>
+<li><strong>Đi đường FB xa nút SW và cuộn cảm</strong>, tốt nhất có mảng GND che giữa. Không đi xuyên dưới cuộn cảm.</li>
+<li>Một số IC cần tụ bù nhỏ song song điện trở trên (feed-forward capacitor), đặt sát chân FB. Giá trị đọc trong datasheet của IC.</li>
+</ol>
+<figure class="fig"><svg viewBox="0 0 720 360" role="img" aria-label="Layout mẫu mạch buck: hot loop, nút SW và đường hồi tiếp" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="20" width="680" height="320" rx="16" class="fl-pcb"/><text x="40" y="326" class="tm">Lớp dưới: mặt GND liền khối</text><rect x="50" y="70" width="110" height="50" rx="6" class="fl-cu"/><text x="105" y="100" class="tx b" text-anchor="middle">V<tspan class="sub">IN</tspan></text><rect x="180" y="70" width="60" height="34" rx="4" class="fl-part"/><text x="210" y="92" class="tx b" text-anchor="middle">C<tspan class="sub">IN</tspan></text><rect x="270" y="60" width="110" height="110" rx="8" class="fl-ic"/><text x="325" y="112" class="tx b" text-anchor="middle">Buck IC</text><text x="325" y="130" class="tm" text-anchor="middle">Q1 + Q2</text><rect x="380" y="95" width="50" height="34" rx="4" class="fl-wr2"/><line x1="405" y1="95" x2="405" y2="50" class="wr"/><text x="412" y="46" class="twr b">Nút SW: đồng nhỏ gọn</text><rect x="430" y="70" width="90" height="90" rx="10" class="fl-part"/><text x="475" y="120" class="tx b" text-anchor="middle">L</text><rect x="540" y="70" width="140" height="90" rx="6" class="fl-cu"/><rect x="560" y="90" width="50" height="30" rx="4" class="fl-part"/><text x="585" y="110" class="tx b" text-anchor="middle">C<tspan class="sub">OUT</tspan></text><text x="640" y="150" class="tx b" text-anchor="middle">V<tspan class="sub">OUT</tspan></text><g class="via"><circle cx="620" cy="88" r="4"/><circle cx="638" cy="88" r="4"/><circle cx="656" cy="88" r="4"/><circle cx="620" cy="104" r="4"/><circle cx="638" cy="104" r="4"/><circle cx="656" cy="104" r="4"/></g><rect x="170" y="60" width="122" height="56" rx="16" class="wr thick dash"/><line x1="200" y1="116" x2="200" y2="184" class="wr"/><text x="40" y="200" class="twr b">Hot loop: C<tspan class="sub">IN</tspan> sát IC, vòng nhỏ nhất</text><path d="M600,160 L600,260 L300,260 L300,170" class="a1 thick" fill="none"/><text x="450" y="252" class="ta1 b" text-anchor="middle">Đường FB: lấy từ C<tspan class="sub">OUT</tspan>, đi xa nút SW và L</text><rect x="310" y="190" width="20" height="16" rx="2" class="fl-part"/><rect x="310" y="212" width="20" height="16" rx="2" class="fl-part"/><text x="340" y="214" class="tm">cầu chia FB, sát chân FB</text></svg><figcaption>Hình 4. Đường FB đi từ C<sub>OUT</sub> vòng xa nút SW và cuộn cảm, kết thúc ngay tại cầu chia sát chân FB.</figcaption></figure>
+</section>
+<section id="a1-thứ-tự-đặt-linh-kiện" class="level2 ">
+<h2>5. Thứ tự đặt linh kiện</h2>
+<p>Khi bắt đầu layout, đặt theo thứ tự ưu tiên giảm dần:</p>
+<ol type="1">
+<li>IC buck.</li>
+<li>Tụ CIN sát chân VIN–GND của IC (hot loop).</li>
+<li>Cuộn cảm sát chân SW.</li>
+<li>Tụ ra COUT sát cuộn cảm và chân GND.</li>
+<li>Cầu chia FB sát IC, kéo đường FB từ COUT.</li>
+<li>Các tụ nhỏ phụ (bootstrap, VCC, soft-start…) đặt sát chân tương ứng.</li>
+</ol>
+<p>Cuối cùng mới tính tới connector, tản nhiệt và đường dây ngoài.</p>
+</section>
+<section id="a1-cảnh-báo-an-toàn-và-thực-tế" class="level2 ">
+<h2>6. Cảnh báo an toàn và thực tế</h2>
+<p>Nếu mạch buck lấy điện từ nguồn lớn hơn 50 V DC hoặc từ AC, cần tuân thủ khoảng cách cách điện (creepage/clearance) và thử nghiệm an toàn tương ứng; layout ở mức điện áp thấp như bài này chưa đủ cho các trường hợp đó. Khi đo nút SW bằng oscilloscope, dùng đầu dò với dây mass ngắn (spring tip) để không tạo thêm một “hot loop” của chính que đo.</p>
 </section>
 <section id="a1-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
 <h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
 <ul>
-<li>Chọn MOSFET theo ID trên trang đầu thay vì tính tổn hao và nhiệt độ.</li>
-<li>Dùng RDS(on) ở VGS = 10 V trong khi mạch chỉ lái 3,3 V hoặc 5 V.</li>
-<li>Nghĩ rằng VGS &gt; VGS(th) là MOSFET đã mở hoàn toàn.</li>
-<li>Quên hệ số nhiệt của RDS(on), tính tổn hao ở 25 °C.</li>
-<li>Lái gate trực tiếp từ GPIO ở tần số PWM cao, khiến MOSFET chuyển mạch chậm và nóng.</li>
-<li>Không có điện trở pull-down ở gate: khi MCU đang reset (chân ở trạng thái high-Z), gate thả nổi, MOSFET có thể dẫn ngoài ý muốn.</li>
-<li>Không có diode dập cho tải cảm, xung áp vượt VDS(max).</li>
-<li>Với MOSFET SMD, dùng RθJA trong datasheet mà không kiểm tra điều kiện đo diện tích đồng; board của bạn có thể kém hơn nhiều.</li>
+<li>Đặt cuộn cảm gần IC nhưng CIN ở xa, hot loop lớn.</li>
+<li>Đổ đồng rộng ở nút SW “cho mát”, biến nó thành anten phát xạ.</li>
+<li>Cắt xẻ lớp GND bên dưới hot loop bằng đường tín hiệu hoặc khe.</li>
+<li>Lấy đường FB từ gần cuộn cảm hoặc đi xuyên qua dưới cuộn cảm.</li>
+<li>Dùng via đơn lẻ nối CIN xuống GND ở xa chân IC.</li>
+<li>Đặt cầu chia FB ở xa IC, dây trở kháng cao dài.</li>
+<li>Đặt vị trí cuộn cảm trước khi đặt CIN, sau đó phải kéo dây vòng.</li>
+<li>Đo ripple bằng que đo dây mass dài rồi kết luận layout hỏng.</li>
 </ul>
 </section>
 <section id="a1-tổng-kết" class="level2 summary">
 <h2>Tổng kết</h2>
 <ul>
-<li>ID(max) trên trang đầu được đo ở điều kiện lý tưởng; hãy chọn MOSFET bằng cách tính tổn hao và nhiệt độ mối nối.</li>
-<li>RDS(on) phải đọc đúng ở VGS thực tế của mạch và nhân hệ số nhiệt độ.</li>
-<li>VGS(th) là điểm bắt đầu dẫn, không phải điện áp để mở hoàn toàn.</li>
-<li>Qg và Qgd quyết định mạch lái cần mạnh cỡ nào và tổn hao đóng cắt lớn hay nhỏ.</li>
-<li>Luôn tính TJ = TA + P × Rθ và lặp lại cho tới khi giả định nhiệt độ khớp kết quả.</li>
+<li>Hot loop (CIN → Q1 → Q2) là vòng dòng gián đoạn nguy hiểm nhất; giảm điện cảm của nó giảm tỉ lệ thuận xung áp.</li>
+<li>Nút SW phải nhỏ gọn, ngắn, không có tín hiệu nhạy đi gần.</li>
+<li>Mặt phẳng GND liền khối ngay dưới hot loop là điều kiện để diện tích vòng nhỏ.</li>
+<li>Đường FB lấy từ COUT, cầu chia sát IC, đi xa nút SW và cuộn cảm.</li>
+<li>Đặt linh kiện theo thứ tự: IC, CIN, cuộn cảm, COUT, cầu chia FB.</li>
 </ul>
 </section>
 <section id="a1-gợi-ý-đọc-tiếp" class="level2 next">
 <h2>Gợi ý đọc tiếp</h2>
 <ul>
-<li>Thiết kế mạch lái gate (gate driver) cho MOSFET: chọn điện trở gate và xử lý dao động (ringing)</li>
-<li>Tính toán tản nhiệt cho linh kiện công suất từ A đến Z</li>
-<li>Những lỗi thường gặp khi dùng MOSFET kênh P làm công tắc phía cao (high-side switch)</li>
+<li>Đo ripple điện áp ra đúng cách bằng oscilloscope</li>
+<li>Thiết kế stackup 4 lớp cho board nguồn xung</li>
+<li>Kỹ thuật snubber RC để giảm ringing ở nút SW</li>
 </ul>
 </section>
 <section id="a1-nguồn-tham-khảo" class="level2 refs">
 <h2>Nguồn tham khảo</h2>
 <ul>
-<li>Infineon, Application Note “MOSFET Power Losses Calculation Using the Datasheet Parameters”.</li>
-<li>Vishay Siliconix, Application Note AN608A “Power MOSFET Basics: Understanding Gate Charge and Using it to Assess Switching Performance”.</li>
-<li>onsemi, Application Note AND9083/D “MOSFET Gate-Charge Origin and its Applications”.</li>
-<li>Datasheet các MOSFET phổ thông vỏ TO-220 của Infineon (dòng IRLZ44N, IRF540N) để đối chiếu cách trình bày thông số.</li>
-<li>Horowitz &amp; Hill, “The Art of Electronics”, 3rd Edition, Chương 3 (Field-Effect Transistors).</li>
+<li>Texas Instruments, Application Note AN-1149 “Layout Guidelines for Switching Power Supplies” (mã SNVA021, cần kiểm tra lại).</li>
+<li>IPC-2221 (Generic Standard on Printed Board Design) và IPC-2152 (Standard for Determining Current-Carrying Capacity in Printed Board Design).</li>
+<li>Henry W. Ott, “Electromagnetic Compatibility Engineering”, phần về diện tích vòng và điện cảm.</li>
 </ul>
 </section>
 </div>
@@ -360,272 +341,137 @@ main{min-width:0}.post-body{overflow-wrap:anywhere}
 <article id="a2" class="post a2">
   <header class="post-head">
     <div class="post-num">Bài 02</div>
-    <div class="chips"><span class="chip cat">Điện tử công suất</span><span class="chip lvl">Mức Trung bình</span><span class="chip">⏱ 11 phút đọc</span></div>
-    <h2 class="post-title">Tính toán cuộn cảm cho mạch buck 12V→5V/3A từ A đến Z</h2>
-    <p class="lede">Tính cuộn cảm cho mạch buck 12V→5V/3A: chọn dòng ripple, tính L, dòng đỉnh, dòng RMS, Isat, tổn hao đồng và các lưu ý layout, có ví dụ số liệu cụ thể.</p>
-    <ul class="tags"><li>#buck converter</li><li>#cuộn cảm</li><li>#dòng ripple</li><li>#dòng bão hòa</li><li>#nguồn xung</li><li>#DC/DC</li></ul>
+    <div class="chips"><span class="chip cat">Phần cứng cho hệ thống nhúng</span><span class="chip lvl">Mức Cơ bản</span><span class="chip">⏱ 9 phút đọc</span></div>
+    <h2 class="post-title">Thiết kế nguồn, reset và boot cho ESP32 để không bị brownout</h2>
+    <p class="lede">Thiết kế phần cứng quanh ESP32: chọn nguồn 3V3 đủ dòng, tính tụ bulk, mạch reset EN, strapping pin GPIO0/GPIO12 và các lỗi gây brownout hay gặp trên board.</p>
+    <ul class="tags"><li>#ESP32</li><li>#brownout</li><li>#nguồn 3V3</li><li>#reset</li><li>#strapping pin</li><li>#tụ bulk</li></ul>
   </header>
-  <div class="post-body"><p>Cuộn cảm là linh kiện “khó tính” nhất trong một mạch buck. Chọn điện cảm quá nhỏ thì dòng ripple lớn, ripple điện áp ra cao, IC hay nhảy vào chế độ hạn dòng. Chọn quá lớn thì cuộn to, đắt, đáp ứng tải chậm. Còn chọn sai dòng bão hòa thì cuộn cảm có thể “sập” điện cảm khi tải nặng, dòng tăng vọt và IC hoặc MOSFET bị hỏng. Bài này đi từng bước tính cuộn cảm cho một mạch buck cụ thể 12 V xuống 5 V/3 A, từ công thức đến đọc thông số khi chọn linh kiện thật.</p><div class="stats"><div class="stat"><b>6,8 µH</b><span>điện cảm chọn cho ripple ~30%</span></div><div class="stat"><b>3,46 A</b><span>dòng đỉnh I<sub>PK</sub> ở V<sub>IN(max)</sub></span></div><div class="stat"><b>≥ 5 A</b><span>I<sub>sat</sub> nên vượt ngưỡng hạn dòng IC</span></div><div class="stat"><b>9,1 mV</b><span>ripple áp ra với 25 µF hiệu dụng</span></div></div>
+  <div class="post-body"><p>Một tình huống rất quen thuộc: board ESP32 chạy ổn khi cắm vào cổng USB của máy tính, nhưng khi bật Wi-Fi hoặc dùng adapter rẻ tiền thì tự khởi động lại, log báo “Brownout detector was triggered”. Nhiều người đổ lỗi cho phần mềm, trong khi nguyên nhân gần như luôn nằm ở phần cứng: nguồn không đáp ứng được dòng xung khi phát sóng, thiếu tụ, hoặc các chân khởi động (strapping pin) bị kéo sai mức. Bài này đi qua ba việc phần cứng cần làm đúng quanh ESP32: nguồn 3V3, mạch reset và cấu hình boot.</p><div class="stats"><div class="stat"><b>0,15 V</b><span>sụt áp trên cáp USB ở 0,5 A</span></div><div class="stat"><b>0,41 W</b><span>tổn hao LDO 5 V → 3,3 V ở 240 mA</span></div><div class="stat"><b>100 µF</b><span>tụ bulk gợi ý cho dòng đỉnh Wi-Fi</span></div><div class="stat"><b>13,9 ms</b><span>thời gian trễ reset của RC 10k + 1 µF</span></div></div>
 <section id="a2-kiến-thức-nền-cần-có" class="level2 basics">
 <h2>Kiến thức nền cần có</h2>
 <ul>
-<li><strong>Mạch buck</strong> (step-down converter): công tắc (MOSFET phía cao) đóng cắt liên tục, cuộn cảm cùng tụ ra lọc thành điện áp DC thấp hơn điện áp vào. Có loại không đồng bộ (dùng diode Schottky) và đồng bộ (synchronous, dùng MOSFET phía thấp thay diode).</li>
-<li><strong>Chu kỳ làm việc</strong> (duty cycle) D: tỉ lệ thời gian công tắc đóng trong một chu kỳ.</li>
-<li>Định luật của cuộn cảm: V = L × di/dt. Điện áp không đổi đặt lên cuộn cảm làm dòng tăng hoặc giảm tuyến tính.</li>
-<li>Bài giả định mạch chạy ở <strong>chế độ dòng liên tục</strong> (CCM, Continuous Conduction Mode): dòng cuộn cảm không bao giờ về 0.</li>
+<li><strong>ESP32</strong> là vi điều khiển tích hợp Wi-Fi/Bluetooth, chạy ở điện áp 3,3 V. Bài viết nói về dòng ESP32 gốc (ví dụ module ESP32-WROOM-32); các dòng ESP32-S3, C3 có khác biệt nhỏ về chân và thông số, cần đọc tài liệu thiết kế phần cứng của đúng dòng.</li>
+<li><strong>Brownout</strong> (sụt áp nguồn) là hiện tượng điện áp nguồn tụt dưới ngưỡng cho phép dù chỉ trong vài micro giây. ESP32 có mạch phát hiện brownout bên trong và sẽ reset chip khi điện áp tụt quá thấp.</li>
+<li>Dòng tiêu thụ của ESP32 không đều: trung bình thấp nhưng có xung lớn mỗi lần phát sóng.</li>
+<li>Tụ điện hoạt động như bình chứa điện tích: ΔV = I × Δt / C.</li>
 </ul>
 </section>
-<section id="a2-thông-số-thiết-kế" class="level2 ">
-<h2>1. Thông số thiết kế</h2>
-<div class="tablewrap"><table>
-<thead>
-<tr class="header">
-<th>Thông số</th>
-<th>Ký hiệu</th>
-<th>Giá trị</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Điện áp vào</td>
-<td>VIN</td>
-<td>12 V danh định, dải 10,8–13,2 V (±10%)</td>
-</tr>
-<tr class="even">
-<td>Điện áp ra</td>
-<td>VOUT</td>
-<td>5 V</td>
-</tr>
-<tr class="odd">
-<td>Dòng ra tối đa</td>
-<td>IOUT</td>
-<td>3 A</td>
-</tr>
-<tr class="even">
-<td>Tần số đóng cắt</td>
-<td>fsw</td>
-<td>500 kHz</td>
-</tr>
-<tr class="odd">
-<td>Tỉ lệ dòng ripple mong muốn</td>
-<td>r</td>
-<td>30% của IOUT</td>
-</tr>
-</tbody>
-</table></div>
-<p>Tần số 500 kHz là một điểm cân bằng phổ biến cho nguồn vài ampe: đủ cao để cuộn cảm và tụ nhỏ gọn, chưa quá cao để tổn hao đóng cắt chiếm ưu thế. Nếu dùng một IC buck cụ thể, hãy lấy tần số theo IC đó.</p>
-<figure class="fig"><svg viewBox="0 0 760 300" role="img" aria-label="Sơ đồ nguyên lý mạch buck đồng bộ" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="60" y1="70" x2="250" y2="70" class="ln"/><text x="40" y="75" class="tx b" text-anchor="end">V<tspan class="sub">IN</tspan></text><circle cx="60" cy="70" r="4" class="fl-ink"/><line x1="130" y1="70" x2="130" y2="130" class="ln"/><line x1="112" y1="130" x2="148" y2="130" class="ln thick"/><line x1="112" y1="140" x2="148" y2="140" class="ln thick"/><line x1="130" y1="140" x2="130" y2="240" class="ln"/><text x="105" y="140" class="tx" text-anchor="end">C<tspan class="sub">IN</tspan></text><line x1="250" y1="70" x2="250" y2="100" class="ln"/><rect x="228" y="100" width="44" height="40" rx="6" class="a2 fl-soft"/><text x="250" y="125" class="ta2 b" text-anchor="middle">Q1</text><line x1="250" y1="140" x2="250" y2="170" class="ln"/><circle cx="250" cy="170" r="6" class="fl-wr"/><text x="236" y="166" class="twr b" text-anchor="end">SW</text><line x1="250" y1="170" x2="250" y2="190" class="ln"/><rect x="228" y="190" width="44" height="40" rx="6" class="a2 fl-soft"/><text x="250" y="215" class="ta2 b" text-anchor="middle">Q2</text><line x1="250" y1="230" x2="250" y2="240" class="ln"/><line x1="250" y1="170" x2="350" y2="170" class="ln"/><path d="M350,170 q12,-24 24,0 q12,-24 24,0 q12,-24 24,0 q12,-24 24,0" class="a2 thick" fill="none"/><text x="398" y="138" class="ta2 b" text-anchor="middle">L = 6,8 µH</text><line x1="446" y1="170" x2="640" y2="170" class="ln"/><line x1="520" y1="170" x2="520" y2="195" class="ln"/><line x1="502" y1="195" x2="538" y2="195" class="ln thick"/><line x1="502" y1="205" x2="538" y2="205" class="ln thick"/><line x1="520" y1="205" x2="520" y2="240" class="ln"/><text x="548" y="206" class="tx">C<tspan class="sub">OUT</tspan></text><line x1="640" y1="170" x2="640" y2="185" class="ln"/><rect x="628" y="185" width="24" height="45" rx="3" class="ln fl-bg"/><line x1="640" y1="230" x2="640" y2="240" class="ln"/><text x="662" y="212" class="tx">R<tspan class="sub">LOAD</tspan></text><circle cx="640" cy="170" r="4" class="fl-ink"/><text x="660" y="165" class="tx b">V<tspan class="sub">OUT</tspan> 5 V / 3 A</text><line x1="130" y1="240" x2="640" y2="240" class="ln"/><text x="380" y="262" class="tm" text-anchor="middle">GND</text><path d="M140,80 L238,80 L238,232 L140,232 Z" class="wr dash" fill="none"/><text x="190" y="290" class="twr" text-anchor="middle">vòng dòng nóng (hot loop): C<tspan class="sub">IN</tspan> → Q1 → Q2</text><text x="60" y="40" class="tm">VIN 10,8–13,2 V · f<tspan class="sub">sw</tspan> = 500 kHz</text></svg><figcaption>Hình 1. Mạch buck đồng bộ 12 V → 5 V/3 A. Vòng nét đứt màu đỏ là vòng dòng gián đoạn cần giữ nhỏ nhất khi layout.</figcaption></figure>
-</section>
-<section id="a2-nguyên-lý-dòng-ripple-đến-từ-đâu" class="level2 ">
-<h2>2. Nguyên lý: dòng ripple đến từ đâu</h2>
-<p>Trong mỗi chu kỳ:</p>
-<ul>
-<li><strong>Khi Q1 đóng</strong> (thời gian D × T): điện áp trên cuộn cảm là VIN − VOUT, dòng tăng tuyến tính.</li>
-<li><strong>Khi Q1 mở</strong> (thời gian (1 − D) × T): điện áp trên cuộn cảm là −VOUT (bỏ qua sụt áp trên Q2), dòng giảm tuyến tính.</li>
-</ul>
-<p>Ở trạng thái xác lập, lượng dòng tăng bằng lượng dòng giảm. Từ đó suy ra (bỏ qua tổn hao):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mfrac><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub></mfrac></mrow><annotation encoding="application/x-tex">D = \frac{V_{OUT}}{V_{IN}}</annotation></semantics></math></p>
-<p>Biên độ dòng ripple đỉnh-đỉnh (peak-to-peak):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub><mo>=</mo><mfrac><mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>−</mo><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mi>D</mi></mrow><mrow><mi>L</mi><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow></mfrac><mo>=</mo><mfrac><mrow><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mfrac displaystyle="true"><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>L</mi><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow></mfrac></mrow><annotation encoding="application/x-tex">\Delta I_L = \frac{(V_{IN} - V_{OUT}) \times D}{L \times f_{sw}} = \frac{V_{OUT} \times \left(1 - \dfrac{V_{OUT}}{V_{IN}}\right)}{L \times f_{sw}}</annotation></semantics></math></p>
-<ul>
-<li>ΔIL: dòng ripple đỉnh-đỉnh (A)</li>
-<li>L: điện cảm (H)</li>
-<li>fsw: tần số đóng cắt (Hz)</li>
-</ul>
-<div class="callout why"><span class="callout-tag">Tại sao</span><p>Điểm quan trọng: tử số VOUT × (1 − VOUT/VIN) <strong>tăng khi VIN tăng</strong>. Vì vậy ripple lớn nhất xảy ra ở <strong>VIN lớn nhất</strong>, và ta phải tính L tại VIN(max).</p></div>
-<figure class="fig"><svg viewBox="0 0 800 320" role="img" aria-label="Dạng sóng điện áp nút SW và dòng cuộn cảm trong mạch buck" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="150" y1="120" x2="680" y2="120" class="ln" marker-end="url(#arr)"/><text x="136" y="90" class="tx b" text-anchor="end">V<tspan class="sub">SW</tspan></text><text x="144" y="124" class="tm" text-anchor="end">0</text><text x="144" y="54" class="tm" text-anchor="end">V<tspan class="sub">IN</tspan></text><polyline points="150,120 150,50 220.9,50 220.9,120 320,120 320,50 390.9,50 390.9,120 490,120 490,50 560.9,50 560.9,120 660,120" class="wr thick" fill="none"/><line x1="150" y1="38" x2="221" y2="38" class="ln" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="185" y="32" class="tx b" text-anchor="middle">D·T</text><line x1="150" y1="14" x2="320" y2="14" class="mu" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="330" y="18" class="tm">T = 1/f<tspan class="sub">sw</tspan> = 2 µs</text><line x1="150" y1="285" x2="680" y2="285" class="ln" marker-end="url(#arr)"/><text x="136" y="150" class="tx b" text-anchor="end">I<tspan class="sub">L</tspan></text><line x1="150" y1="220" x2="680" y2="220" class="a2 dash"/><line x1="150" y1="190" x2="680" y2="190" class="mu dash"/><line x1="150" y1="250" x2="680" y2="250" class="mu dash"/><text x="686" y="194" class="tm">I<tspan class="sub">PK</tspan> = 3,46 A</text><text x="686" y="224" class="ta2 b">I<tspan class="sub">OUT</tspan> = 3 A</text><text x="686" y="254" class="tm">I<tspan class="sub">VALLEY</tspan> = 2,54 A</text><polyline points="150,250 220.9,190 320,250 390.9,190 490,250 560.9,190 660,250" class="a2 thick" fill="none"/><line x1="126" y1="192" x2="126" y2="248" class="ln" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="120" y="216" class="tx b" text-anchor="end">ΔI<tspan class="sub">L</tspan></text><text x="120" y="234" class="tm" text-anchor="end">0,91 A</text><text x="185" y="180" class="tm" text-anchor="middle">tăng: (V<tspan class="sub">IN</tspan>−V<tspan class="sub">OUT</tspan>)/L</text><text x="280" y="270" class="tm" text-anchor="middle">giảm: V<tspan class="sub">OUT</tspan>/L</text><text x="680" y="303" class="tm" text-anchor="end">t</text></svg><figcaption>Hình 2. Điện áp nút SW và dòng cuộn cảm. Dòng tăng khi Q1 đóng, giảm khi Q1 mở, dao động quanh I<sub>OUT</sub>.</figcaption></figure>
-</section>
-<section id="a2-tại-sao-chọn-ripple-2040" class="level2 ">
-<h2>3. Tại sao chọn ripple 20–40%?</h2>
-<p>Tỉ lệ ripple r = ΔIL / IOUT là một quyết định thiết kế, không có đáp án duy nhất:</p>
-<ul>
-<li><strong>r nhỏ (10–20%)</strong>: ripple áp ra thấp, dòng đỉnh thấp, nhưng cần L lớn, cuộn to và đáp ứng tải (transient response) chậm hơn vì dòng cuộn cảm thay đổi chậm.</li>
-<li><strong>r lớn (50% trở lên)</strong>: L nhỏ, rẻ, đáp ứng nhanh, nhưng dòng đỉnh cao, tổn hao lõi và ripple áp ra tăng, mạch dễ rơi vào chế độ gián đoạn (DCM) khi tải nhẹ.</li>
-</ul>
-<p>Khoảng 20–40% là vùng mà nhiều application note của các hãng IC khuyến nghị. Bài này chọn r = 30%, tức ΔIL = 0,3 × 3 = 0,9 A. Ngoài ra, các IC dùng điều khiển chế độ dòng (current mode) cần một biên độ ripple tối thiểu để mạch cảm biến dòng hoạt động ổn định, đó là thêm một lý do không nên chọn ripple quá nhỏ. Luôn đọc phần “Inductor Selection” trong datasheet IC bạn dùng.</p>
-</section>
-<section id="a2-tính-giá-trị-điện-cảm" class="level2 ">
-<h2>4. Tính giá trị điện cảm</h2>
-<p>Tại VIN(max) = 13,2 V:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>D</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><mo>=</mo><mfrac><mn>5</mn><mrow><mn>13,2</mn></mrow></mfrac><mo>=</mo><mn>0,379</mn></mrow><annotation encoding="application/x-tex">D_{min} = \frac{5}{13{,}2} = 0{,}379</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><mfrac><mrow><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>D</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow></mfrac><mo>=</mo><mfrac><mrow><mn>5</mn><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mn>0,379</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mn>0,9</mn><mo>×</mo><mn>500</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup></mrow></mfrac><mo>=</mo><mfrac><mrow><mn>3,106</mn></mrow><mrow><mn>450</mn><mspace width="0.167em"></mspace><mn>000</mn></mrow></mfrac><mo>≈</mo><mn>6,90</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">H</mtext></mrow><annotation encoding="application/x-tex">L = \frac{V_{OUT} \times (1 - D_{min})}{\Delta I_L \times f_{sw}} = \frac{5 \times (1 - 0{,}379)}{0{,}9 \times 500 \times 10^{3}} = \frac{3{,}106}{450\,000} \approx 6{,}90\ \mu\text{H}</annotation></semantics></math></p>
-<p>Chọn giá trị chuẩn gần nhất: <strong>L = 6,8 µH</strong>.</p>
-<p>Tính lại ripple với giá trị đã chọn:</p>
-<div class="tablewrap"><table>
-<thead>
-<tr class="header">
-<th>VIN</th>
-<th>D</th>
-<th>ΔIL</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>13,2 V</td>
-<td>0,379</td>
-<td>3,106 / (500 × 10³ × 6,8 × 10⁻⁶) = <strong>0,91 A</strong></td>
-</tr>
-<tr class="even">
-<td>12 V</td>
-<td>0,417</td>
-<td>2,917 / 3,4 = <strong>0,86 A</strong></td>
-</tr>
-<tr class="odd">
-<td>10,8 V</td>
-<td>0,463</td>
-<td>2,685 / 3,4 = <strong>0,79 A</strong></td>
-</tr>
-</tbody>
-</table></div>
-<p>Ripple thực tế 0,79–0,91 A, tức 26–30% IOUT. Đạt yêu cầu.</p>
-</section>
-<section id="a2-dòng-đỉnh-dòng-rms-và-dòng-bão-hòa" class="level2 ">
-<h2>5. Dòng đỉnh, dòng RMS và dòng bão hòa</h2>
-<section id="a2-dòng-đỉnh-peak-current" class="level3">
-<h3>Dòng đỉnh (peak current)</h3>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>P</mi><mi>K</mi></mrow></msub><mo>=</mo><msub><mi>I</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>+</mo><mfrac><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub></mrow><mn>2</mn></mfrac><mo>=</mo><mn>3</mn><mo>+</mo><mfrac><mrow><mn>0,91</mn></mrow><mn>2</mn></mfrac><mo>≈</mo><mn>3,46</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">I_{PK} = I_{OUT} + \frac{\Delta I_L}{2} = 3 + \frac{0{,}91}{2} \approx 3{,}46\ \text{A}</annotation></semantics></math></p>
-</section>
-<section id="a2-dòng-hiệu-dụng-rms" class="level3">
-<h3>Dòng hiệu dụng (RMS)</h3>
-<p>Dòng cuộn cảm là DC cộng một sóng tam giác, nên:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>R</mi><mi>M</mi><mi>S</mi></mrow></msub><mo>=</mo><msqrt><mrow><msubsup><mi>I</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow><mn>2</mn></msubsup><mo>+</mo><mfrac><mrow><mi>Δ</mi><msubsup><mi>I</mi><mi>L</mi><mn>2</mn></msubsup></mrow><mn>12</mn></mfrac></mrow></msqrt><mo>=</mo><msqrt><mrow><mn>9</mn><mo>+</mo><mfrac><mrow><mn>0</mn><mo>,</mo><msup><mn>91</mn><mn>2</mn></msup></mrow><mn>12</mn></mfrac></mrow></msqrt><mo>=</mo><msqrt><mrow><mn>9,07</mn></mrow></msqrt><mo>≈</mo><mn>3,01</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">I_{RMS} = \sqrt{I_{OUT}^2 + \frac{\Delta I_L^2}{12}} = \sqrt{9 + \frac{0{,}91^2}{12}} = \sqrt{9{,}07} \approx 3{,}01\ \text{A}</annotation></semantics></math></p>
-<div class="callout note"><span class="callout-tag">Nhận xét</span><p>Nhận xét: với ripple 30%, IRMS gần như bằng IOUT. Thành phần ripple ảnh hưởng rất ít đến tổn hao đồng, nhưng ảnh hưởng rõ đến dòng đỉnh.</p></div>
-</section>
-<section id="a2-đừng-quên-dung-sai-điện-cảm" class="level3">
-<h3>Đừng quên dung sai điện cảm</h3>
-<p>Cuộn cảm công suất thường có dung sai ±20%. Ở trường hợp xấu nhất L = 6,8 × 0,8 = 5,44 µH:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub><mo>=</mo><mfrac><mrow><mn>3,106</mn></mrow><mrow><mn>500</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>×</mo><mn>5,44</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup></mrow></mfrac><mo>≈</mo><mn>1,14</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext><mspace width="1.0em"></mspace><mo>⇒</mo><mspace width="1.0em"></mspace><msub><mi>I</mi><mrow><mi>P</mi><mi>K</mi></mrow></msub><mo>≈</mo><mn>3</mn><mo>+</mo><mn>0,57</mn><mo>=</mo><mn>3,57</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">\Delta I_L = \frac{3{,}106}{500 \times 10^3 \times 5{,}44 \times 10^{-6}} \approx 1{,}14\ \text{A} \quad\Rightarrow\quad I_{PK} \approx 3 + 0{,}57 = 3{,}57\ \text{A}</annotation></semantics></math></p>
-</section>
-<section id="a2-dòng-bão-hòa-saturation-current" class="level3">
-<h3>Dòng bão hòa (saturation current)</h3>
-<p><strong>Isat</strong> là dòng mà tại đó điện cảm giảm đi một tỉ lệ nhất định (thường 10%, 20% hoặc 30%, tùy hãng định nghĩa) do lõi từ bắt đầu bão hòa (saturation). Khi lõi bão hòa, L giảm mạnh, dòng tăng dốc hơn trong mỗi chu kỳ, dẫn tới dòng đỉnh càng lớn, một vòng luẩn quẩn có thể phá hỏng MOSFET.</p>
-<p>Hai cách chọn Isat:</p>
+<section id="a2-vì-sao-esp32-dễ-bị-brownout" class="level2 ">
+<h2>1. Vì sao ESP32 dễ bị brownout</h2>
+<p>Khi phát Wi-Fi, ESP32 hút dòng xung vài trăm mA trong khoảng thời gian rất ngắn. Tài liệu thiết kế của hãng khuyến nghị nguồn cấp được tối thiểu khoảng 500 mA cho ESP32 (cần kiểm tra lại giá trị chính xác trong Hardware Design Guidelines của đúng dòng chip bạn dùng). Nếu nguồn không đáp ứng, hoặc đường dây từ nguồn tới chip có điện trở lớn, điện áp tại chân VDD sẽ bị kéo xuống đúng lúc phát sóng.</p>
+<p>Có ba nguồn gây sụt áp:</p>
 <ol type="1">
-<li><strong>Tối thiểu</strong>: Isat &gt; IPK(worst case) = 3,57 A, cộng thêm biên an toàn 20% → khoảng 4,3 A.</li>
-<li><strong>An toàn hơn (khuyến nghị)</strong>: Isat &gt; ngưỡng hạn dòng (current limit) của IC. Khi ngắn mạch đầu ra hoặc lúc khởi động với tụ ra lớn, dòng cuộn cảm sẽ chạm ngưỡng hạn dòng. Nếu cuộn cảm bão hòa trước khi IC kịp hạn dòng, sự cố dễ leo thang. Với IC buck 3 A, ngưỡng hạn dòng thường nằm khoảng 4–5,5 A (cần kiểm tra lại trong datasheet IC cụ thể), vì vậy chọn Isat ≥ 5–6 A là hợp lý.</li>
+<li><strong>Nguồn đầu vào yếu:</strong> adapter hoặc cổng USB giới hạn dòng, điện áp 5 V bản thân đã thấp.</li>
+<li><strong>Sụt áp trên dây:</strong> cáp USB mỏng có điện trở. Ví dụ điện trở vòng đi-về 0,3 Ω, dòng 0,5 A thì sụt <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,3</mn><mo>×</mo><mn>0,5</mn><mo>=</mo><mn>0,15</mn></mrow><annotation encoding="application/x-tex">0{,}3 \times 0{,}5 = 0{,}15</annotation></semantics></math> V ngay trên cáp.</li>
+<li><strong>Bộ ổn áp (LDO/buck) chậm hoặc quá nhỏ:</strong> khi dòng đột ngột tăng, mạch vòng điều khiển cần một khoảng thời gian để đáp ứng; trong thời gian đó tụ phải gánh.</li>
 </ol>
-<div class="callout note"><span class="callout-tag">Lưu ý</span><p>Một lưu ý: Isat của nhiều cuộn cảm giảm khi nhiệt độ tăng, đặc biệt với lõi ferrite. Hãy xem đồ thị Isat theo nhiệt độ nếu datasheet có.</p></div>
-<figure class="fig"><svg viewBox="0 0 700 300" role="img" aria-label="Điện cảm theo dòng DC: ferrite bão hòa đột ngột và lõi bột bão hòa mềm" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="70" y1="240" x2="680" y2="240" class="ln" marker-end="url(#arr)"/><line x1="70" y1="240" x2="70" y2="30" class="ln" marker-end="url(#arr)"/><text x="680" y="260" class="tm" text-anchor="end">I<tspan class="sub">DC</tspan> (A)</text><text x="78" y="34" class="tm">L (µH)</text><line x1="70" y1="70" x2="660" y2="70" class="grid"/><text x="62" y="74" class="tm" text-anchor="end">6,8</text><line x1="70" y1="104" x2="660" y2="104" class="grid"/><text x="62" y="108" class="tm" text-anchor="end">5,4</text><path d="M70,70 L380,72 C410,74 425,95 440,140 C452,180 462,215 480,228" class="wr thick" fill="none"/><text x="488" y="226" class="twr b">Ferrite: bão hòa đột ngột</text><path d="M70,70 C200,74 300,86 400,104 C500,122 580,145 660,170" class="a2 thick" fill="none"/><text x="670" y="122" class="ta2 b" text-anchor="end">Bột kim loại / composite:</text><text x="670" y="140" class="ta2" text-anchor="end">giảm từ từ</text><line x1="70" y1="104" x2="660" y2="104" class="mu dash"/><line x1="400" y1="104" x2="400" y2="240" class="a2 dash"/><text x="400" y="258" class="ta2 b" text-anchor="middle">I<tspan class="sub">sat</tspan> (L giảm 20%)</text><text x="380" y="285" class="tm" text-anchor="middle">Định nghĩa Isat (10/20/30%) tùy hãng, đọc kỹ datasheet</text></svg><figcaption>Hình 3. Lõi ferrite giữ điện cảm ổn định rồi sập đột ngột; lõi bột kim loại giảm điện cảm từ từ theo dòng.</figcaption></figure>
+<figure class="fig"><svg viewBox="0 0 760 330" role="img" aria-label="Điện áp 3V3 khi ESP32 phát Wi-Fi, có và không có tụ bulk" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="90" y1="300" x2="700" y2="300" class="ln" marker-end="url(#arr)"/><line x1="90" y1="300" x2="90" y2="20" class="ln" marker-end="url(#arr)"/><text x="700" y="320" class="tm" text-anchor="end">t</text><text x="98" y="24" class="tm"></text><text x="84" y="76" class="tx b" text-anchor="end">I<tspan class="sub">3V3</tspan></text><path d="M90,100 L200,100 L200,48 L270,48 L270,100 L380,100 L380,48 L450,48 L450,100 L560,100 L560,48 L630,48 L630,100 L690,100" class="a2 thick" fill="none"/><text x="272" y="38" class="ta2">phát Wi-Fi</text><text x="452" y="38" class="ta2">phát Wi-Fi</text><text x="632" y="38" class="ta2">phát Wi-Fi</text><line x1="90" y1="170" x2="690" y2="170" class="mu dash"/><text x="84" y="174" class="tx b" text-anchor="end">3,3 V</text><line x1="90" y1="250" x2="690" y2="250" class="wr dash"/><text x="688" y="268" class="twr" text-anchor="end">ngưỡng brownout</text><text x="688" y="284" class="twr" text-anchor="end">(≈ 2,4 V, cần kiểm tra)</text><path d="M90,170 L200,170 L204,268 L222,246 L250,222 L270,214 L274,176 L290,170 L380,170 L384,268 L402,246 L430,222 L450,214 L454,176 L470,170 L560,170 L564,268 L582,246 L610,222 L630,214 L634,176 L650,170 L690,170" class="wr thick" fill="none"/><path d="M90,170 L200,170 L204,186 L230,190 L270,194 L274,172 L292,170 L380,170 L384,186 L410,190 L450,194 L454,172 L472,170 L560,170 L564,186 L590,190 L630,194 L634,172 L652,170 L690,170" class="a1 thick" fill="none"/><text x="104" y="318" class="twr b">━ không có tụ bulk: chạm ngưỡng → reset</text><text x="440" y="318" class="ta1 b">━ có tụ bulk 100 µF: sụt nhẹ</text></svg><figcaption>Hình 1. Điện áp 3V3 khi ESP32 phát Wi-Fi: tụ bulk đủ lớn chỉ sụt nhẹ, thiếu tụ thì sụt chạm ngưỡng brownout và chip reset.</figcaption></figure>
 </section>
-<section id="a2-dòng-định-mức-nhiệt-irms-itemp" class="level3">
-<h3>Dòng định mức nhiệt (Irms / Itemp)</h3>
-<p>Đây là thông số khác hẳn Isat. <strong>Irms</strong> (hay Itemp, Ir) là dòng DC làm cuộn cảm nóng thêm một mức xác định, thường 40 °C, do tổn hao đồng. Cần Irms của cuộn cảm &gt; 3,01 A, nên chọn ≥ 4 A để cuộn không quá nóng trong hộp kín.</p>
-</section>
-</section>
-<section id="a2-tổn-hao-trên-cuộn-cảm" class="level2 ">
-<h2>6. Tổn hao trên cuộn cảm</h2>
-<section id="a2-tổn-hao-đồng-copper-loss" class="level3">
-<h3>Tổn hao đồng (copper loss)</h3>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>C</mi><mi>u</mi></mrow></msub><mo>=</mo><msubsup><mi>I</mi><mrow><mi>R</mi><mi>M</mi><mi>S</mi></mrow><mn>2</mn></msubsup><mo>×</mo><mi>D</mi><mi>C</mi><mi>R</mi></mrow><annotation encoding="application/x-tex">P_{Cu} = I_{RMS}^2 \times DCR</annotation></semantics></math></p>
+<section id="a2-chọn-bộ-ổn-áp-3v3" class="level2 ">
+<h2>2. Chọn bộ ổn áp 3V3</h2>
+<section id="a2-phương-án-ldo" class="level3">
+<h3>Phương án LDO</h3>
+<p>LDO (Low Dropout Regulator) đơn giản, ít nhiễu, nhưng phải trả giá bằng nhiệt. Tổn hao trên LDO là:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>−</mo><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><msub><mi>I</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub></mrow><annotation encoding="application/x-tex">P = (V_{IN} - V_{OUT}) \times I_{OUT}</annotation></semantics></math></p>
+<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ cấp từ 5 V xuống 3,3 V, dòng trung bình trong lúc phát sóng 240 mA:</p></div>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>−</mo><mn>3,3</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mn>0,24</mn><mo>≈</mo><mn>0,41</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P = (5 - 3{,}3) \times 0{,}24 \approx 0{,}41\ \text{W}</annotation></semantics></math></p>
+<p>Nếu LDO dùng vỏ SOT-223 với nhiệt trở RθJA khoảng 90 °C/W (giá trị giả định, phụ thuộc diện tích đồng, cần kiểm tra lại trong datasheet), nhiệt độ tăng thêm là:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>T</mi><mo>=</mo><mn>0,41</mn><mo>×</mo><mn>90</mn><mo>≈</mo><mn>37</mn><msup><mspace width="0.222em"></mspace><mo>∘</mo></msup><mtext mathvariant="normal">C</mtext></mrow><annotation encoding="application/x-tex">\Delta T = 0{,}41 \times 90 \approx 37\ ^\circ\text{C}</annotation></semantics></math></p>
+<p>Chấp nhận được khi môi trường 25–40 °C, nhưng nếu dòng đỉnh lên 0,5 A kéo dài thì công suất đạt <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1,7</mn><mo>×</mo><mn>0,5</mn><mo>=</mo><mn>0,85</mn></mrow><annotation encoding="application/x-tex">1{,}7 \times 0{,}5 = 0{,}85</annotation></semantics></math> W và nhiệt độ tăng gấp đôi.</p>
+<p>Hai điểm cần kiểm tra khi chọn LDO:</p>
 <ul>
-<li>DCR: điện trở DC của dây quấn (Ω), có trong datasheet.</li>
+<li><strong>Dòng ra tối thiểu</strong> phải đủ cho dòng đỉnh, ví dụ 800 mA trở lên cho ESP32 để có dư.</li>
+<li><strong>Điện áp dropout</strong> (chênh lệch tối thiểu giữa vào và ra để còn ổn áp). Với nguồn USB 5 V có thể tụt xuống 4,5 V, LDO có dropout 1,1 V (kiểu AMS1117-3.3, cần kiểm tra lại trong datasheet) vẫn còn dư; nhưng nếu cấp từ pin lithium 1 cell (3,0–4,2 V) thì LDO dropout lớn sẽ không ổn định được 3,3 V khi pin yếu, cần LDO dropout thấp hoặc mạch buck-boost.</li>
 </ul>
-<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ với DCR = 20 mΩ:</p></div>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>C</mi><mi>u</mi></mrow></msub><mo>=</mo><mn>3</mn><mo>,</mo><msup><mn>01</mn><mn>2</mn></msup><mo>×</mo><mn>0,020</mn><mo>≈</mo><mn>0,18</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{Cu} = 3{,}01^2 \times 0{,}020 \approx 0{,}18\ \text{W}</annotation></semantics></math></p>
-<p>So với công suất ra 5 × 3 = 15 W, tổn hao đồng khoảng 1,2%. Nếu DCR = 50 mΩ, con số này tăng lên khoảng 0,45 W, tức 3% hiệu suất, đủ để nhận ra khi đo.</p>
-<div class="callout note"><span class="callout-tag">Lưu ý</span><p>Lưu ý thêm: DCR cũng tăng theo nhiệt độ (đồng có hệ số nhiệt điện trở khoảng +0,39%/°C), nên ở 80–100 °C tổn hao thực tế cao hơn con số tính ở 25 °C khoảng 20–30%.</p></div>
+<div class="callout note"><span class="callout-tag">Lưu ý</span><p>Một lưu ý riêng cho LDO: nhiều LDO cũ yêu cầu tụ ra có ESR nằm trong một dải nhất định để ổn định. Dùng tụ ceramic có ESR quá thấp có thể làm LDO dao động. Luôn đọc phần “output capacitor” trong datasheet của LDO bạn dùng.</p></div>
 </section>
-<section id="a2-tổn-hao-lõi-core-loss" class="level3">
-<h3>Tổn hao lõi (core loss)</h3>
-<p>Tổn hao lõi phụ thuộc biên độ ripple, tần số và vật liệu lõi, không phụ thuộc trực tiếp vào dòng DC. Không có công thức đơn giản dùng chung cho mọi cuộn cảm; cách thực tế nhất là dùng công cụ tính tổn hao online của chính hãng sản xuất cuộn cảm, nhập VIN, VOUT, fsw, IOUT. Ở 500 kHz với ripple 30%, tổn hao lõi thường nhỏ hơn tổn hao đồng, nhưng với cuộn cảm giá rẻ không rõ vật liệu thì không nên mặc định như vậy.</p>
+<section id="a2-phương-án-buck" class="level3">
+<h3>Phương án buck</h3>
+<p>Nếu nguồn vào cao (12 V trở lên) hoặc cần hiệu suất cao khi chạy pin, nên dùng buck. Hiệu suất cao hơn nhiều, tổn hao nhiệt nhỏ, đổi lại cần layout cẩn thận (xem bài về layout buck cùng tuần) và có thể có nhiễu đóng cắt ảnh hưởng tới Wi-Fi nếu đặt sát anten.</p>
+<figure class="fig"><svg viewBox="0 0 760 300" role="img" aria-label="Sơ đồ khối nguồn cho ESP32 với tụ bulk và tụ lọc sát chân" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="80" width="120" height="70" rx="10" class="a2 fl-soft"/><text x="80.0" y="112.0" class="tx b" text-anchor="middle">USB 5 V</text><text x="80.0" y="131.0" class="tm" text-anchor="middle">adapter, cáp</text><line x1="140" y1="115" x2="180" y2="115" class="ln" marker-end="url(#arr)"/><rect x="180" y="80" width="140" height="70" rx="10" class="a2 fl-soft"/><text x="250.0" y="112.0" class="tx b" text-anchor="middle">Bảo vệ</text><text x="250.0" y="131.0" class="tm" text-anchor="middle">PTC + TVS</text><line x1="320" y1="115" x2="360" y2="115" class="ln" marker-end="url(#arr)"/><rect x="360" y="80" width="150" height="70" rx="10" class="a2 fl-soft"/><text x="435.0" y="112.0" class="tx b" text-anchor="middle">LDO / buck 3V3</text><text x="435.0" y="131.0" class="tm" text-anchor="middle">dòng ≥ 800 mA</text><line x1="510" y1="115" x2="620" y2="115" class="a2 thick"/><text x="565" y="104" class="ta2 b" text-anchor="middle">3V3</text><line x1="620" y1="115" x2="640" y2="115" class="a2 thick" marker-end="url(#arr)"/><rect x="640" y="70" width="100" height="90" rx="10" class="a2 fl-soft"/><text x="690.0" y="112.0" class="tx b" text-anchor="middle">ESP32</text><text x="690.0" y="131.0" class="tm" text-anchor="middle">module</text><circle cx="580" cy="115" r="3" class="fl-ink"/><line x1="580" y1="115" x2="580" y2="137" class="ln"/><line x1="568" y1="137" x2="592" y2="137" class="ln thick"/><line x1="568" y1="145" x2="592" y2="145" class="ln thick"/><line x1="580" y1="145" x2="580" y2="185" class="ln"/><circle cx="610" cy="115" r="3" class="fl-ink"/><line x1="610" y1="115" x2="610" y2="137" class="ln"/><line x1="598" y1="137" x2="622" y2="137" class="ln thick"/><line x1="598" y1="145" x2="622" y2="145" class="ln thick"/><line x1="610" y1="145" x2="610" y2="185" class="ln"/><text x="560" y="206" class="tx b" text-anchor="end">100 µF</text><text x="560" y="224" class="tm" text-anchor="end">bulk, sát module</text><text x="632" y="206" class="tx b">100 nF</text><text x="632" y="224" class="tm">sát chân VDD</text><line x1="20" y1="240" x2="740" y2="240" class="ln"/><text x="20" y="262" class="tx b">GND</text><text x="250" y="190" class="tm" text-anchor="middle">cáp mỏng: sụt ≈ 0,15 V</text><text x="435" y="190" class="tm" text-anchor="middle">LDO: P = (V<tspan class="sub">IN</tspan>−V<tspan class="sub">OUT</tspan>)·I</text></svg><figcaption>Hình 2. Sơ đồ nguồn: USB 5 V → bảo vệ → LDO 3V3 → tụ bulk 100 µF và các tụ 100 nF sát chân VDD.</figcaption></figure>
 </section>
 </section>
-<section id="a2-kiểm-tra-nhanh-ảnh-hưởng-tới-tụ-ra" class="level2 ">
-<h2>7. Kiểm tra nhanh ảnh hưởng tới tụ ra</h2>
-<p>Cuộn cảm và tụ ra quyết định ripple áp ra:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>≈</mo><mfrac><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub></mrow><mrow><mn>8</mn><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>×</mo><msub><mi>C</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub></mrow></mfrac><mo>+</mo><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub><mo>×</mo><mi>E</mi><mi>S</mi><mi>R</mi></mrow><annotation encoding="application/x-tex">\Delta V_{OUT} \approx \frac{\Delta I_L}{8 \times f_{sw} \times C_{OUT}} + \Delta I_L \times ESR</annotation></semantics></math></p>
-<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ dùng 2 tụ ceramic 22 µF. Cần lưu ý tụ ceramic X5R/X7R bị giảm điện dung khi có điện áp DC đặt vào (DC bias). Giả sử điện dung hiệu dụng còn khoảng 25 µF tổng (cần kiểm tra lại bằng đồ thị DC bias của tụ cụ thể):</p></div>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>≈</mo><mfrac><mrow><mn>0,91</mn></mrow><mrow><mn>8</mn><mo>×</mo><mn>500</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>×</mo><mn>25</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup></mrow></mfrac><mo>≈</mo><mn>9,1</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">\Delta V_{OUT} \approx \frac{0{,}91}{8 \times 500 \times 10^3 \times 25 \times 10^{-6}} \approx 9{,}1\ \text{mV}</annotation></semantics></math></p>
-<p>Với tụ ceramic, ESR chỉ vài mΩ nên phần thứ hai không đáng kể. Ripple khoảng 9 mV trên 5 V là chấp nhận được với hầu hết tải số.</p>
-</section>
-<section id="a2-chế-độ-tải-nhẹ" class="level2 ">
-<h2>8. Chế độ tải nhẹ</h2>
-<p>Với mạch không đồng bộ (dùng diode), khi IOUT &lt; ΔIL/2 ≈ 0,46 A, dòng cuộn cảm chạm về 0 và mạch vào chế độ DCM. Ở DCM, nút SW xuất hiện dao động (ringing) giữa L và điện dung ký sinh, điều này bình thường, không phải lỗi. Mạch buck đồng bộ thì tùy IC: có IC cho dòng âm chảy ngược (forced PWM), có IC chuyển sang chế độ tiết kiệm năng lượng (PFM/skip mode) khi tải nhẹ.</p>
-</section>
-<section id="a2-chọn-linh-kiện-thực-tế" class="level2 ">
-<h2>9. Chọn linh kiện thực tế</h2>
-<p>Tóm tắt yêu cầu cho cuộn cảm:</p>
-<div class="tablewrap"><table>
-<thead>
-<tr class="header">
-<th>Thông số</th>
-<th>Yêu cầu</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>L</td>
-<td>6,8 µH, dung sai ±20%</td>
-</tr>
-<tr class="even">
-<td>Isat</td>
-<td>≥ 5–6 A (lớn hơn ngưỡng hạn dòng của IC)</td>
-</tr>
-<tr class="odd">
-<td>Irms</td>
-<td>≥ 4 A</td>
-</tr>
-<tr class="even">
-<td>DCR</td>
-<td>≤ 25 mΩ càng tốt</td>
-</tr>
-<tr class="odd">
-<td>Loại</td>
-<td>Có che chắn từ (shielded)</td>
-</tr>
-</tbody>
-</table></div>
-<p>Một số dòng cuộn cảm công suất có che chắn đáng tham khảo: Coilcraft XAL/XEL series, Würth Elektronik WE-XHMI và WE-PD, Bourns SRP series. Kích thước vỏ khoảng 6×6 mm đến 7×7 mm thường đáp ứng được yêu cầu trên, nhưng phải kiểm tra lại Isat, Irms, DCR trong datasheet của mã cụ thể.</p>
-<div class="callout why"><span class="callout-tag">Tại sao</span><p>Tại sao phải dùng cuộn cảm có che chắn (shielded)? Cuộn hở (unshielded) để từ trường tản ra xung quanh, gây nhiễu cho các mạch analog gần đó và khó đạt chuẩn EMI.</p></div>
-<figure class="fig"><svg viewBox="0 0 700 250" role="img" aria-label="So sánh cuộn cảm có che chắn và không che chắn" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="90" y="60" width="150" height="120" rx="14" class="ln fl-ink2"/><rect x="110" y="80" width="110" height="80" rx="10" class="mu" fill="none"/><text x="165" y="126" class="tx b" text-anchor="middle">6R8</text><rect x="78" y="150" width="20" height="30" class="a2 fl-soft"/><rect x="232" y="150" width="20" height="30" class="a2 fl-soft"/><text x="165" y="215" class="tx b" text-anchor="middle">Shielded (có che chắn)</text><text x="165" y="236" class="tm" text-anchor="middle">từ trường khép kín trong lõi</text><ellipse cx="510" cy="70" rx="70" ry="16" class="ln fl-ink2"/><rect x="470" y="70" width="80" height="90" class="ln fl-bg"/><path d="M470,80 Q510,88 550,80" class="a2 thick" fill="none"/><path d="M470,92 Q510,100 550,92" class="a2 thick" fill="none"/><path d="M470,104 Q510,112 550,104" class="a2 thick" fill="none"/><path d="M470,116 Q510,124 550,116" class="a2 thick" fill="none"/><path d="M470,128 Q510,136 550,128" class="a2 thick" fill="none"/><path d="M470,140 Q510,148 550,140" class="a2 thick" fill="none"/><path d="M470,152 Q510,160 550,152" class="a2 thick" fill="none"/><ellipse cx="510" cy="160" rx="70" ry="16" class="ln fl-ink2"/><path d="M440,70 C380,40 380,190 440,160" class="wr dash" fill="none" marker-end="url(#arr)"/><path d="M580,70 C640,40 640,190 580,160" class="wr dash" fill="none" marker-end="url(#arr)"/><text x="510" y="215" class="tx b" text-anchor="middle">Unshielded (lõi hở)</text><text x="510" y="236" class="twr" text-anchor="middle">từ trường tản ra ngoài → nhiễu mạch lân cận</text></svg><figcaption>Hình 4. Cuộn cảm có che chắn giữ từ trường trong lõi; loại lõi hở để từ trường tản ra, gây nhiễu cho mạch xung quanh.</figcaption></figure>
-</section>
-<section id="a2-lưu-ý-layout" class="level2 ">
-<h2>10. Lưu ý layout</h2>
+<section id="a2-tính-tụ-bulk-bao-nhiêu-là-đủ" class="level2 ">
+<h2>3. Tính tụ bulk: bao nhiêu là đủ?</h2>
+<p>Tụ bulk phải cấp điện tích cho ESP32 trong khoảng thời gian bộ ổn áp chưa kịp đáp ứng. Giả sử:</p>
 <ul>
-<li>Đặt cuộn cảm gần nút SW của IC, nhưng <strong>giữ diện tích đồng của nút SW nhỏ nhất có thể</strong>: đây là nút có dV/dt rất lớn, đồng càng rộng càng phát xạ nhiễu nhiều.</li>
-<li>Vòng dòng quan trọng nhất trong buck là vòng <strong>CIN → Q1 → Q2 → CIN</strong> (dòng gián đoạn), không phải vòng cuộn cảm. Ưu tiên đặt tụ vào sát IC trước, rồi mới đến cuộn cảm.</li>
-<li>Không đi dây tín hiệu nhạy (đặc biệt đường hồi tiếp FB) bên dưới cuộn cảm hoặc gần nút SW.</li>
-<li>Dùng nhiều via và mặt đồng rộng ở hai đầu cuộn cảm (phía ra VOUT) để tản nhiệt.</li>
+<li>Dòng tăng đột ngột ΔI = 300 mA.</li>
+<li>Thời gian đáp ứng của bộ ổn áp Δt = 20 µs (giả định).</li>
+<li>Cho phép sụt tối đa ΔV = 100 mV.</li>
 </ul>
-<figure class="fig"><svg viewBox="0 0 720 360" role="img" aria-label="Layout mẫu mạch buck: hot loop, nút SW và đường hồi tiếp" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="20" width="680" height="320" rx="16" class="fl-pcb"/><text x="40" y="326" class="tm">Lớp dưới: mặt GND liền khối</text><rect x="50" y="70" width="110" height="50" rx="6" class="fl-cu"/><text x="105" y="100" class="tx b" text-anchor="middle">V<tspan class="sub">IN</tspan></text><rect x="180" y="70" width="60" height="34" rx="4" class="fl-part"/><text x="210" y="92" class="tx b" text-anchor="middle">C<tspan class="sub">IN</tspan></text><rect x="270" y="60" width="110" height="110" rx="8" class="fl-ic"/><text x="325" y="112" class="tx b" text-anchor="middle">Buck IC</text><text x="325" y="130" class="tm" text-anchor="middle">Q1 + Q2</text><rect x="380" y="95" width="50" height="34" rx="4" class="fl-wr2"/><line x1="405" y1="95" x2="405" y2="50" class="wr"/><text x="412" y="46" class="twr b">Nút SW: đồng nhỏ gọn</text><rect x="430" y="70" width="90" height="90" rx="10" class="fl-part"/><text x="475" y="120" class="tx b" text-anchor="middle">L</text><rect x="540" y="70" width="140" height="90" rx="6" class="fl-cu"/><rect x="560" y="90" width="50" height="30" rx="4" class="fl-part"/><text x="585" y="110" class="tx b" text-anchor="middle">C<tspan class="sub">OUT</tspan></text><text x="640" y="150" class="tx b" text-anchor="middle">V<tspan class="sub">OUT</tspan></text><g class="via"><circle cx="620" cy="88" r="4"/><circle cx="638" cy="88" r="4"/><circle cx="656" cy="88" r="4"/><circle cx="620" cy="104" r="4"/><circle cx="638" cy="104" r="4"/><circle cx="656" cy="104" r="4"/></g><rect x="170" y="60" width="122" height="56" rx="16" class="wr thick dash"/><line x1="200" y1="116" x2="200" y2="184" class="wr"/><text x="40" y="200" class="twr b">Hot loop: C<tspan class="sub">IN</tspan> sát IC, vòng nhỏ nhất</text><path d="M600,160 L600,260 L300,260 L300,170" class="a2 thick" fill="none"/><text x="450" y="252" class="ta2 b" text-anchor="middle">Đường FB: lấy từ C<tspan class="sub">OUT</tspan>, đi xa nút SW và L</text><rect x="290" y="270" width="20" height="16" rx="2" class="fl-part"/><rect x="290" y="292" width="20" height="16" rx="2" class="fl-part"/><text x="320" y="294" class="tm">cầu chia FB</text></svg><figcaption>Hình 5. Gợi ý bố trí trên PCB 2 lớp: C<sub>IN</sub> sát IC, nút SW nhỏ, đường FB đi tránh xa nút SW và cuộn cảm.</figcaption></figure>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>=</mo><mfrac><mrow><mi>I</mi><mo>⋅</mo><mi>Δ</mi><mi>t</mi></mrow><mrow><mi>Δ</mi><mi>V</mi></mrow></mfrac><mo>=</mo><mfrac><mrow><mn>0,3</mn><mo>×</mo><mn>20</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup></mrow><mrow><mn>0,1</mn></mrow></mfrac><mo>=</mo><mn>60</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">F</mtext></mrow><annotation encoding="application/x-tex">C = \frac{I \cdot \Delta t}{\Delta V} = \frac{0{,}3 \times 20 \times 10^{-6}}{0{,}1} = 60\ \mu\text{F}</annotation></semantics></math></p>
+<p>Vậy dùng tụ khoảng 100 µF để có dư (lưu ý tụ ceramic lớn bị giảm điện dung khi có điện áp DC, tụ tantalum hoặc polymer cũng được dùng). Ngoài tụ bulk, mỗi chân nguồn của chip và module cần tụ nhỏ 100 nF đặt sát chân để lọc nhiễu tần số cao, và đặt tụ bulk sát chân 3V3 của module chứ không đặt ở đầu vào xa.</p>
+</section>
+<section id="a2-mạch-reset-chân-en" class="level2 ">
+<h2>4. Mạch reset: chân EN</h2>
+<p>Chân <strong>EN</strong> (enable) kích hoạt chip: mức thấp thì chip tắt, mức cao thì chạy. Cách đơn giản nhất là điện trở kéo lên 3V3 (10 kΩ) và tụ xuống GND (khoảng 1 µF) tạo mạch RC, làm chân EN lên chậm hơn nguồn một chút để chip khởi động khi nguồn đã ổn định.</p>
+<p>Hằng số thời gian: τ = R × C = 10 kΩ × 1 µF = 10 ms. Thời gian để EN lên tới 75% điện áp nguồn (khoảng ngưỡng mức cao của chân, cần kiểm tra lại trong datasheet):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mo>−</mo><mi>τ</mi><mo>ln</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mn>0,75</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>10</mn><mo>×</mo><mn>1,386</mn><mo>≈</mo><mn>13,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">ms</mtext></mrow><annotation encoding="application/x-tex">t = -\tau \ln(1 - 0{,}75) = 10 \times 1{,}386 \approx 13{,}9\ \text{ms}</annotation></semantics></math></p>
+<p>Con số 14 ms phải lớn hơn thời gian nguồn 3V3 tăng lên ổn định (thường khoảng vài ms); nếu EN lên trước nguồn, chip có thể khởi động ở điện áp thấp và bị lỗi. Nút reset chỉ cần nối chân EN xuống GND (có thể kèm tụ chống rung 100 nF).</p>
+<p>Không để chân EN thả nổi. Chân nổi gom nhiễu và chip tự reset bất kỳ lúc nào, đây là lỗi hay gặp ở board tự thiết kế.</p>
+</section>
+<section id="a2-strapping-pin-chân-quyết-định-chế-độ-boot" class="level2 ">
+<h2>5. Strapping pin: chân quyết định chế độ boot</h2>
+<p>Ngay sau khi reset, ESP32 đọc điện áp trên một số chân đặc biệt gọi là <strong>strapping pin</strong> để quyết định chế độ khởi động. Với ESP32 gốc, các chân quan trọng là GPIO0, GPIO2, GPIO5, GPIO12 và GPIO15.</p>
+<ul>
+<li><strong>GPIO0:</strong> mức cao khi khởi động thì chip chạy chương trình trong flash; mức thấp thì vào chế độ tải firmware (download mode). Chân này có điện trở kéo lên nội bộ, nên thả nổi sẽ chạy bình thường.</li>
+<li><strong>GPIO12 (MTDI):</strong> quyết định điện áp cấp cho flash. Nếu GPIO12 ở mức cao lúc khởi động, chip cấu hình flash chạy 1,8 V; với module flash 3,3 V thì module sẽ không khởi động được. Đây là lỗi kinh điển: gắn thiết bị kéo GPIO12 lên cao (ví dụ cảm biến, nút nhấn kéo lên) khiến board “chết” ở mỗi lần bật nguồn.</li>
+<li>GPIO2, GPIO5, GPIO15 ảnh hưởng chế độ boot và in log; cũng không nên kéo mạnh về mức ngược với mặc định.</li>
+</ul>
+<div class="callout tip"><span class="callout-tag">Quy tắc</span><p>Quy tắc: <strong>không nối trực tiếp tải hoặc thiết bị ngoài vào các strapping pin nếu không hiểu mức mặc định</strong>; nếu bắt buộc, tách bằng điện trở hoặc dùng chân khác. Bảng mức mặc định chính xác cho từng dòng chip có trong datasheet; cần kiểm tra lại cho đúng dòng ESP32 bạn dùng.</p></div>
+<figure class="fig"><svg viewBox="0 0 760 305" role="img" aria-label="Bảng strapping pin của ESP32 và hậu quả khi kéo sai mức" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="14" width="110" height="34" class="a2 fl-soft"/><text x="28" y="36" class="ta2 b">Chân</text><rect x="130" y="14" width="150" height="34" class="a2 fl-soft"/><text x="138" y="36" class="ta2 b">Mặc định nội bộ</text><rect x="280" y="14" width="230" height="34" class="a2 fl-soft"/><text x="288" y="36" class="ta2 b">Mức cao khi boot</text><rect x="510" y="14" width="230" height="34" class="a2 fl-soft"/><text x="518" y="36" class="ta2 b">Mức thấp khi boot</text><rect x="20" y="48" width="720" height="44" class="mu fl-bg" style="stroke-width:1"/><text x="28" y="75" class="tx b">GPIO0</text><text x="138" y="75" class="tm">kéo lên</text><text x="288" y="75" class="tx">chạy chương trình trong flash</text><text x="518" y="75" class="tx">vào chế độ tải firmware</text><rect x="20" y="92" width="720" height="44" class="mu fl-bg" style="stroke-width:1"/><text x="28" y="119" class="tx b">GPIO2</text><text x="138" y="119" class="tm">kéo xuống</text><text x="288" y="119" class="tx">ảnh hưởng chế độ boot</text><text x="518" y="119" class="tx">bình thường; để thả nổi hoặc thấp</text><rect x="20" y="136" width="720" height="44" class="mu fl-bg" style="stroke-width:1"/><text x="28" y="163" class="tx b">GPIO5</text><text x="138" y="163" class="tm">kéo lên</text><text x="288" y="163" class="tx">bình thường</text><text x="518" y="163" class="tx">ảnh hưởng timing SDIO</text><rect x="20" y="180" width="720" height="44" class="mu fl-wr" style="stroke-width:1;fill-opacity:.15"/><text x="28" y="207" class="tx b">GPIO12</text><text x="138" y="207" class="tm">kéo xuống</text><text x="288" y="207" class="twr b">flash 1,8 V → không boot</text><text x="518" y="207" class="tx">flash 3,3 V (đúng)</text><rect x="20" y="224" width="720" height="44" class="mu fl-bg" style="stroke-width:1"/><text x="28" y="251" class="tx b">GPIO15</text><text x="138" y="251" class="tm">kéo lên</text><text x="288" y="251" class="tx">bình thường, có log boot</text><text x="518" y="251" class="tx">tắt log boot</text><text x="20" y="292" class="tm">Theo ESP32 gốc; dòng chip khác có thể khác, cần kiểm tra datasheet. Đọc mức tại thời điểm vừa reset.</text></svg><figcaption>Hình 3. Strapping pin của ESP32 gốc: nối cảm biến hay pull-up sai vào các chân này có thể khiến chip không boot.</figcaption></figure>
+<section id="a2-mạch-tự-động-vào-chế-độ-tải-firmware" class="level3">
+<h3>Mạch tự động vào chế độ tải firmware</h3>
+<p>Board phát triển thường có hai transistor nối với tín hiệu DTR và RTS của chip USB-UART để tự động kéo GPIO0 xuống thấp rồi reset chip, giúp nạp firmware không cần bấm nút. Khi thiết kế board riêng nên sao chép đúng mạch tham khảo của hãng, vì sai sót nhỏ trong mạch này khiến lúc nạp chương trình chip bị reset liên tục.</p>
+</section>
+</section>
+<section id="a2-các-lưu-ý-khác-để-tránh-brownout" class="level2 ">
+<h2>6. Các lưu ý khác để tránh brownout</h2>
+<ul>
+<li><strong>Anten:</strong> đặt module sao cho vùng anten nằm ngoài rìa board, không có đồng và linh kiện bên dưới/xung quanh (theo bản vẽ khuyến nghị của hãng module).</li>
+<li><strong>Ngưỡng brownout:</strong> ESP32 có thể cấu hình ngưỡng phát hiện brownout qua firmware, mức mặc định thường quanh 2,4 V (cần kiểm tra lại trong tài liệu ESP-IDF). Tắt phát hiện brownout để “hết lỗi” là che dấu triệu chứng: chip có thể chạy tiếp ở điện áp thấp, gây lỗi dữ liệu và ghi flash hỏng.</li>
+<li><strong>Pin lithium:</strong> mạch sạc và bảo vệ pin phải đủ dòng cho cả sạc lẫn tải; cảnh báo an toàn: pin lithium không được ngắn mạch hoặc sạc quá áp, cần mạch bảo vệ.</li>
+<li><strong>Đo thực tế:</strong> dùng oscilloscope đo điện áp ngay tại chân 3V3 của module (không đo ở đầu nguồn), cài trigger chế độ cạnh xuống để bắt xung sụt áp khi phát Wi-Fi.</li>
+</ul>
 </section>
 <section id="a2-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
 <h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
 <ul>
-<li>Tính L ở VIN danh định thay vì VIN(max), ripple thực tế lớn hơn thiết kế.</li>
-<li>Nhầm Isat với Irms, hoặc chỉ nhìn một trong hai.</li>
-<li>Chọn Isat chỉ vừa bằng dòng đỉnh lúc tải bình thường, quên trường hợp ngắn mạch và khởi động.</li>
-<li>Bỏ qua dung sai ±20% của cuộn cảm.</li>
-<li>Dùng cuộn cảm unshielded giá rẻ cạnh mạch ADC hoặc anten.</li>
-<li>Tính ripple áp ra với điện dung danh định của tụ ceramic, quên hiệu ứng DC bias.</li>
-<li>Đo ripple bằng que đo có dây mass dài 15 cm, thấy “ripple” hàng trăm mV và đổ lỗi cho cuộn cảm (thực ra là nhiễu thu vào vòng dây mass).</li>
+<li>Cấp nguồn từ adapter 5 V/500 mA rẻ tiền và cáp USB mỏng.</li>
+<li>Dùng LDO nhỏ (dòng 100–150 mA) cho ESP32.</li>
+<li>Không có tụ bulk hoặc đặt tụ bulk xa chân nguồn module.</li>
+<li>Thả nổi chân EN, hoặc không có tụ làm chậm EN.</li>
+<li>Kéo GPIO12 lên cao bằng cảm biến/nút nhấn, board không boot được.</li>
+<li>Tắt brownout detector trong firmware thay vì sửa nguồn.</li>
+<li>Đặt buck sát anten gây nhiễu thu phát.</li>
+<li>Đo điện áp 3V3 ở đầu nguồn rồi kết luận “nguồn ổn”.</li>
 </ul>
 </section>
 <section id="a2-tổng-kết" class="level2 summary">
 <h2>Tổng kết</h2>
 <ul>
-<li>Ripple dòng lớn nhất ở VIN(max), luôn tính L tại đó.</li>
-<li>Chọn ripple 20–40% IOUT là điểm khởi đầu tốt; với 12 V→5 V/3 A ở 500 kHz, L ≈ 6,8 µH.</li>
-<li>Isat nên lớn hơn ngưỡng hạn dòng của IC, không chỉ lớn hơn dòng đỉnh lúc làm việc bình thường.</li>
-<li>Irms và DCR quyết định cuộn cảm nóng bao nhiêu; IRMS của cuộn cảm buck gần bằng IOUT.</li>
-<li>Dùng cuộn shielded và giữ nút SW nhỏ gọn để hạn chế nhiễu.</li>
+<li>Brownout của ESP32 hầu hết do nguồn không đáp ứng dòng xung khi phát Wi-Fi, không phải lỗi phần mềm.</li>
+<li>Chọn bộ ổn áp 3V3 có dòng dư (khoảng 800 mA trở lên) và tính tổn hao nhiệt của LDO.</li>
+<li>Dùng tụ bulk khoảng 100 µF kèm tụ 100 nF sát chân nguồn.</li>
+<li>Chân EN cần điện trở kéo lên và tụ làm chậm (ví dụ 10 kΩ + 1 µF).</li>
+<li>Không nối thiết bị vào strapping pin, đặc biệt là GPIO12 và GPIO0, nếu chưa kiểm tra mức mặc định.</li>
 </ul>
 </section>
 <section id="a2-gợi-ý-đọc-tiếp" class="level2 next">
 <h2>Gợi ý đọc tiếp</h2>
 <ul>
-<li>Chọn tụ vào và tụ ra cho mạch buck: dòng ripple, ESR và hiệu ứng DC bias</li>
-<li>Hướng dẫn layout mạch nguồn buck: hot loop, nút SW và đường hồi tiếp</li>
+<li>Thiết kế nguồn cho ESP32 chạy pin lithium: sạc, bảo vệ và đo mức pin</li>
+<li>Bảo vệ ESD và chống nhiễu cho các chân giao tiếp UART/I2C của ESP32</li>
 <li>Đo ripple điện áp ra đúng cách bằng oscilloscope</li>
 </ul>
 </section>
 <section id="a2-nguồn-tham-khảo" class="level2 refs">
 <h2>Nguồn tham khảo</h2>
 <ul>
-<li>Texas Instruments, Application Report SLVA477 “Basic Calculation of a Buck Converter’s Power Stage”.</li>
-<li>Robert W. Erickson, Dragan Maksimović, “Fundamentals of Power Electronics”, Chương 2 (Principles of Steady-State Converter Analysis).</li>
-<li>Sanjaya Maniktala, “Switching Power Supplies A–Z”, các chương về cuộn cảm và chọn tỉ lệ ripple.</li>
-<li>Datasheet và tài liệu kỹ thuật về cách định nghĩa Isat/Irms của Coilcraft, Würth Elektronik.</li>
+<li>Espressif Systems, “ESP32 Hardware Design Guidelines” (cần kiểm tra phiên bản mới nhất).</li>
+<li>Espressif Systems, “ESP32 Series Datasheet” (mục strapping pins và điều kiện cấp nguồn).</li>
+<li>Datasheet của các LDO 3V3 phổ biến (ví dụ AMS1117-3.3) để đối chiếu dropout và yêu cầu tụ ra.</li>
+<li>Espressif, tài liệu ESP-IDF về brownout detector (cần kiểm tra mức ngưỡng mặc định).</li>
 </ul>
 </section>
 </div>
@@ -634,268 +480,142 @@ main{min-width:0}.post-body{overflow-wrap:anywhere}
 <article id="a3" class="post a3">
   <header class="post-head">
     <div class="post-num">Bài 03</div>
-    <div class="chips"><span class="chip cat">Thiết kế nguồn</span><span class="chip lvl">Mức Trung bình</span><span class="chip">⏱ 10 phút đọc</span></div>
-    <h2 class="post-title">Bảo vệ ngược cực cho mạch 12 V: diode, P-MOSFET hay ideal diode controller?</h2>
-    <p class="lede">So sánh 4 cách bảo vệ ngược cực cho mạch 12 V/3 A: diode nối tiếp, diode song song + cầu chì, P-MOSFET và ideal diode controller, có tính tổn hao cụ thể.</p>
-    <ul class="tags"><li>#bảo vệ ngược cực</li><li>#P-MOSFET</li><li>#ideal diode</li><li>#Schottky</li><li>#nguồn 12V</li><li>#TVS</li></ul>
+    <div class="chips"><span class="chip cat">Mạch analog & đo lường</span><span class="chip lvl">Mức Nâng cao</span><span class="chip">⏱ 11 phút đọc</span></div>
+    <h2 class="post-title">Đo dòng bằng điện trở shunt: chọn giá trị, low-side hay high-side, khuếch đại INA</h2>
+    <p class="lede">Thiết kế mạch đo dòng bằng shunt: chọn giá trị shunt, low-side hay high-side, bộ khuếch đại INA và tính sai số offset, CMRR, kết nối Kelvin, có ví dụ số 10 A.</p>
+    <ul class="tags"><li>#điện trở shunt</li><li>#đo dòng</li><li>#current sense amplifier</li><li>#INA</li><li>#offset</li><li>#CMRR</li></ul>
   </header>
-  <div class="post-body"><p>Cắm ngược cực nguồn là lỗi xảy ra thường xuyên hơn nhiều người nghĩ: kẹp ắc quy lắp nhầm, adapter jack tròn đảo cực, dây nguồn ở công trường đấu ngược. Chỉ cần một lần như vậy, tụ điện phân, IC nguồn và vi điều khiển trên board có thể hỏng cùng lúc. Chống ngược cực không khó, nhưng mỗi phương án trả giá khác nhau về sụt áp, nhiệt và chi phí. Bài này so sánh 4 cách phổ biến cho một mạch 12 V/3 A, tính tổn hao cụ thể cho từng cách và chỉ ra khi nào nên chọn cách nào.</p><div class="stats"><div class="stat"><b>1,5 W</b><span>tổn hao diode Schottky nối tiếp ở 3 A</span></div><div class="stat"><b>0,18 W</b><span>tổn hao P-MOSFET 20 mΩ ở 3 A</span></div><div class="stat"><b>60 mV</b><span>sụt áp qua P-MOSFET thay vì 0,5 V</span></div><div class="stat"><b>±20 V</b><span>giới hạn V<sub>GS</sub>: cần zener bảo vệ gate</span></div></div>
+  <div class="post-body"><p>Đo dòng bằng điện trở shunt nghe đơn giản: dòng chạy qua một điện trở rất nhỏ, đo điện áp rơi trên nó rồi chia cho giá trị điện trở. Nhưng khi làm sản phẩm thật, người thiết kế phải trả lời hàng loạt câu hỏi: shunt bao nhiêu mΩ, đặt ở phía nguồn hay phía GND, khuếch đại gấp bao nhiêu lần, sai số của cả chuỗi đo là bao nhiêu ở dòng nhỏ, và vì sao số đo ở dòng 100 mA lại sai tới hàng chục phần trăm trong khi ở 10 A vẫn đẹp. Bài này đi qua toàn bộ chuỗi đo bằng một ví dụ cụ thể: đo dòng tải 0–10 A, đọc bằng ADC 12 bit của vi điều khiển 3,3 V.</p><div class="stats"><div class="stat"><b>50 mV</b><span>điện áp shunt 5 mΩ ở 10 A</span></div><div class="stat"><b>3,2 mA</b><span>mức dòng nhỏ nhất phân giải được với ADC 12 bit sau G = 50</span></div><div class="stat"><b>96 mA</b><span>sai số từ CMRR 100 dB ở 48 V</span></div><div class="stat"><b>1,1 %</b><span>sai số tổng RSS của chuỗi đo</span></div></div>
 <section id="a3-kiến-thức-nền-cần-có" class="level2 basics">
 <h2>Kiến thức nền cần có</h2>
 <ul>
-<li><strong>Diode</strong> dẫn khi phân cực thuận, sụt áp <strong>VF</strong> (forward voltage) khoảng 0,6–1 V với diode silicon thường, 0,3–0,6 V với diode Schottky tùy dòng.</li>
-<li><strong>MOSFET</strong> khi dẫn hoàn toàn tương đương điện trở <strong>RDS(on)</strong>; bên trong luôn có một <strong>diode thân</strong> (body diode) nối giữa drain và source.</li>
-<li>Tổn hao: diode P = VF × I; MOSFET P = I² × RDS(on).</li>
-<li>Nếu cần ôn lại cách đọc RDS(on), VGS(th), VGS(max), xem bài “Giải mã datasheet MOSFET” cùng tuần.</li>
+<li>Định luật Ohm: V = I × R. Công suất trên shunt P = I² × R.</li>
+<li><strong>Bộ khuếch đại đo dòng</strong> (current sense amplifier, hay họ INA của Texas Instruments) là một khuếch đại vi sai chuyên dụng: nó khuếch đại hiệu điện áp nhỏ giữa hai đầu shunt và triệt tiêu thành phần chung (common-mode) của điện áp đường nguồn.</li>
+<li><strong>CMRR</strong> (Common-Mode Rejection Ratio, hệ số triệt tín hiệu chung) cho biết mạch triệt tín hiệu chung tốt đến đâu, thường tính bằng dB.</li>
+<li><strong>Offset</strong> là điện áp lệch của khuếch đại khi hai ngõ vào bằng nhau; nó cộng thẳng vào kết quả đo.</li>
 </ul>
-<blockquote>
-<p><strong>Cảnh báo an toàn:</strong> Ắc quy chì-axit và pin lithium có thể cấp dòng ngắn mạch hàng trăm ampe. Khi thử nghiệm ngược cực, luôn có cầu chì phù hợp gần cực nguồn, đeo kính bảo hộ và không thử trực tiếp trên ắc quy ô tô khi chưa có cầu chì.</p>
-</blockquote>
 </section>
-<section id="a3-thông-số-bài-toán" class="level2 ">
-<h2>Thông số bài toán</h2>
-<div class="tablewrap"><table>
-<thead>
-<tr class="header">
-<th>Thông số</th>
-<th>Giá trị</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Điện áp vào danh định</td>
-<td>12 V (dải làm việc 9–16 V)</td>
-</tr>
-<tr class="even">
-<td>Dòng tải tối đa</td>
-<td>3 A</td>
-</tr>
-<tr class="odd">
-<td>Nhiệt độ môi trường</td>
-<td>tới 50 °C trong hộp kín</td>
-</tr>
-<tr class="even">
-<td>Yêu cầu</td>
-<td>Cắm ngược −12 V không hỏng mạch, không phải thay linh kiện</td>
-</tr>
-</tbody>
-</table></div>
-</section>
-<section id="a3-phương-án-1-diode-nối-tiếp" class="level2 ">
-<h2>Phương án 1: Diode nối tiếp</h2>
-<section id="a3-nguyên-lý" class="level3">
-<h3>Nguyên lý</h3>
-<p>Đặt một diode nối tiếp trên đường dương. Cắm đúng cực, diode dẫn; cắm ngược, diode phân cực ngược và chặn dòng. Đây là cách đơn giản nhất: một linh kiện, không cần điều khiển.</p>
-<figure class="fig"><svg viewBox="0 0 760 320" role="img" aria-label="Sơ đồ diode nối tiếp và P-MOSFET chống ngược cực" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="20" y="24" class="tx b">(a) Diode nối tiếp</text><text x="50" y="105" class="tx b">+12 V</text><line x1="100" y1="100" x2="160" y2="100" class="ln"/><polygon points="163,92 163,108 177,100" class="fl-a2"/><line x1="177" y1="91" x2="177" y2="109" class="a2"/><line x1="177" y1="100" x2="290" y2="100" class="ln"/><text x="170" y="80" class="ta2 b" text-anchor="middle">Schottky 40 V</text><text x="170" y="130" class="tm" text-anchor="middle">V<tspan class="sub">F</tspan> ≈ 0,5 V → 1,5 W</text><line x1="290" y1="100" x2="290" y2="130" class="ln"/><rect x="268" y="130" width="44" height="60" rx="6" class="ln fl-bg"/><text x="290" y="165" class="tx b" text-anchor="middle">Tải</text><line x1="290" y1="190" x2="290" y2="270" class="ln"/><line x1="100" y1="270" x2="290" y2="270" class="ln"/><text x="50" y="275" class="tx b">GND</text><line x1="370" y1="20" x2="370" y2="300" class="grid"/><text x="400" y="24" class="tx b">(b) P-MOSFET + zener bảo vệ gate</text><text x="400" y="125" class="tx b">+12 V</text><line x1="450" y1="120" x2="520" y2="120" class="ln"/><rect x="520" y="98" width="80" height="44" rx="8" class="a3 fl-bg"/><text x="560" y="125" class="ta3 b" text-anchor="middle">P-MOSFET</text><text x="512" y="92" class="tm">D</text><text x="602" y="92" class="tm">S</text><line x1="600" y1="120" x2="720" y2="120" class="ln"/><path d="M505,120 L505,70 L552,70" class="mu"/><path d="M568,70 L615,70 L615,120" class="mu"/><polygon points="553,62 553,78 567,70" class="fl-mu"/><line x1="567" y1="61" x2="567" y2="79" class="mu"/><text x="560" y="56" class="tm" text-anchor="middle">diode thân</text><line x1="560" y1="142" x2="560" y2="180" class="ln"/><text x="566" y="160" class="tm">G</text><circle cx="560" cy="180" r="3" class="fl-ink"/><rect x="552" y="192" width="16" height="40" rx="3" class="ln fl-bg"/><line x1="560" y1="180" x2="560" y2="192" class="ln"/><line x1="560" y1="232" x2="560" y2="270" class="ln"/><text x="546" y="217" class="tm" text-anchor="end">10 kΩ</text><line x1="720" y1="120" x2="720" y2="150" class="ln"/><rect x="698" y="150" width="44" height="60" rx="6" class="ln fl-bg"/><text x="720" y="185" class="tx b" text-anchor="middle">Tải</text><line x1="720" y1="210" x2="720" y2="270" class="ln"/><line x1="450" y1="270" x2="720" y2="270" class="ln"/><text x="400" y="275" class="tx b">GND</text><line x1="560" y1="180" x2="620" y2="180" class="ln"/><line x1="620" y1="180" x2="620" y2="160" class="ln"/><polygon points="612,159 628,159 620,145" class="fl-a3"/><path d="M608,149 L611,145 L629,145 L632,141" class="a3"/><line x1="620" y1="145" x2="620" y2="120" class="ln"/><circle cx="620" cy="120" r="3" class="fl-ink"/><text x="622" y="204" class="ta3" text-anchor="middle">Zener 15 V</text></svg><figcaption>Hình 1. (a) Diode nối tiếp: đơn giản nhưng sụt khoảng 0,5 V. (b) P-MOSFET với drain về phía nguồn vào, zener bảo vệ gate.</figcaption></figure>
-</section>
-<section id="a3-tính-toán" class="level3">
-<h3>Tính toán</h3>
-<p>Với diode Schottky 5 A, giả sử VF ≈ 0,5 V ở 3 A (giá trị phải lấy từ đồ thị VF–IF trong datasheet, ở đúng nhiệt độ):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>D</mi></msub><mo>=</mo><msub><mi>V</mi><mi>F</mi></msub><mo>×</mo><mi>I</mi><mo>=</mo><mn>0,5</mn><mo>×</mo><mn>3</mn><mo>=</mo><mn>1,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_D = V_F \times I = 0{,}5 \times 3 = 1{,}5\ \text{W}</annotation></semantics></math></p>
-<p>Sụt áp 0,5 V trên 12 V là khoảng 4,2% điện áp vào bị mất trước khi tới mạch.</p>
-<p>1,5 W trên một diode vỏ dán SMC là lớn. Nếu nhiệt trở RθJA thực tế trên board của bạn khoảng 75 °C/W (giá trị giả định, phụ thuộc diện tích đồng, cần kiểm tra lại trong datasheet), thì:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>J</mi></msub><mo>=</mo><mn>50</mn><mo>+</mo><mn>1,5</mn><mo>×</mo><mn>75</mn><mo>=</mo><mn>162,5</mn><msup><mspace width="0.222em"></mspace><mo>∘</mo></msup><mtext mathvariant="normal">C</mtext></mrow><annotation encoding="application/x-tex">T_J = 50 + 1{,}5 \times 75 = 162{,}5\ ^\circ\text{C}</annotation></semantics></math></p>
-<p>Kết quả này đã chạm hoặc vượt nhiệt độ mối nối tối đa của nhiều diode Schottky (thường 125–150 °C). Phải tăng mạnh diện tích đồng tản nhiệt hoặc đổi phương án.</p>
-</section>
-<section id="a3-bẫy-riêng-của-diode-schottky" class="level3">
-<h3>Bẫy riêng của diode Schottky</h3>
-<p>Schottky có <strong>dòng rò ngược</strong> (reverse leakage current) lớn và tăng rất nhanh theo nhiệt độ. Một diode đang nóng 120 °C có thể rò hàng mA khi phân cực ngược. Ngoài ra, khi nóng, dòng rò sinh thêm nhiệt, có thể dẫn tới <strong>thermal runaway</strong> (mất ổn định nhiệt). Đây là lý do không nên chọn Schottky có điện áp ngược định mức (VRRM) sát điện áp làm việc: với hệ 12 V, nên chọn diode 40 V trở lên.</p>
-<p><strong>Kết luận:</strong> diode nối tiếp hợp lý khi dòng nhỏ (dưới khoảng 1 A) hoặc khi chấp nhận mất 0,3–0,5 V. Ở 3 A, tổn hao 1,5 W là quá đắt.</p>
-</section>
-</section>
-<section id="a3-phương-án-2-diode-song-song-cầu-chì" class="level2 ">
-<h2>Phương án 2: Diode song song + cầu chì</h2>
-<p>Đặt một diode ngược chiều song song với nguồn, sau một cầu chì. Cắm đúng cực, diode không dẫn, tổn hao gần bằng 0. Cắm ngược, diode dẫn mạnh, kẹp điện áp mạch ở khoảng −1 V và làm đứt cầu chì.</p>
-<p>Ưu điểm: không tổn hao khi làm việc bình thường. Nhược điểm:</p>
+<section id="a3-chọn-giá-trị-điện-trở-shunt-bài-toán-cân-bằng" class="level2 ">
+<h2>1. Chọn giá trị điện trở shunt: bài toán cân bằng</h2>
+<p>Chọn shunt là cân bằng giữa hai điều ngược nhau:</p>
 <ul>
-<li>Sau mỗi lần cắm ngược phải thay cầu chì (hoặc dùng cầu chì tự phục hồi PTC, nhưng PTC phản ứng chậm hơn và vẫn để mạch chịu khoảng −1 V trong thời gian đó).</li>
-<li>Diode phải chịu được dòng xung lớn cho tới khi cầu chì đứt; cần đối chiếu thông số IFSM (surge current) của diode với đặc tính I²t của cầu chì.</li>
-<li>Trong thời gian trước khi cầu chì đứt, mạch vẫn bị đặt điện áp ngược bằng VF của diode, thường khoảng 1 V. Đa số IC chịu được −0,3 V ở chân nguồn, nên cần kiểm tra lại trong datasheet.</li>
+<li><strong>Shunt lớn:</strong> tín hiệu lớn, sai số offset ít ảnh hưởng, nhưng tổn hao nhiệt và sụt áp trên tải lớn.</li>
+<li><strong>Shunt nhỏ:</strong> hiệu suất tốt, nhưng tín hiệu nhỏ, bị offset và nhiễu “ăn” mất ở dòng nhỏ.</li>
 </ul>
-<p>Phương án này hợp với thiết bị rẻ, ít khi bị cắm ngược, chấp nhận thay cầu chì. Không đạt yêu cầu “không phải thay linh kiện” của bài toán.</p>
+<p>Với dòng tối đa 10 A và shunt 5 mΩ:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>s</mi><mi>h</mi><mi>u</mi><mi>n</mi><mi>t</mi><mo>,</mo><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>=</mo><msub><mi>I</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>×</mo><mi>R</mi><mo>=</mo><mn>10</mn><mo>×</mo><mn>0,005</mn><mo>=</mo><mn>50</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">V_{shunt,max} = I_{max} \times R = 10 \times 0{,}005 = 50\ \text{mV}</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>s</mi><mi>h</mi><mi>u</mi><mi>n</mi><mi>t</mi><mo>,</mo><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>=</mo><msubsup><mi>I</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow><mn>2</mn></msubsup><mo>×</mo><mi>R</mi><mo>=</mo><msup><mn>10</mn><mn>2</mn></msup><mo>×</mo><mn>0,005</mn><mo>=</mo><mn>0,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{shunt,max} = I_{max}^2 \times R = 10^2 \times 0{,}005 = 0{,}5\ \text{W}</annotation></semantics></math></p>
+<p>Tổn hao 0,5 W cần chọn điện trở công suất đủ lớn (ví dụ cỡ 2512 hoặc lớn hơn, định mức 1–3 W, vì phải chọn công suất danh định gấp ít nhất 2 lần công suất thực để điện trở không quá nóng). Sụt áp 50 mV trên đường nguồn 12 V chỉ khoảng 0,4%, chấp nhận được.</p>
+<p>Lấy tín hiệu ra vừa với dải ADC: ADC chạy 0–3,3 V, nếu chọn khuếch đại G = 50 thì đầu ra lúc 10 A là:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi><mo>,</mo><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>=</mo><mn>50</mn><mo>×</mo><mn>0,05</mn><mo>=</mo><mn>2,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{out,max} = 50 \times 0{,}05 = 2{,}5\ \text{V}</annotation></semantics></math></p>
+<p>còn dư khoảng 0,8 V so với 3,3 V, tránh bão hòa ở đầu ra. Quy tắc: chọn G sao cho điện áp ra ở dòng tối đa nằm trong khoảng 70–90% dải ADC.</p>
+<section id="a3-độ-phân-giải-đạt-được" class="level3">
+<h3>Độ phân giải đạt được</h3>
+<p>ADC 12 bit, 3,3 V có một bước (LSB) là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3,3</mn><mi>/</mi><mn>4096</mn><mo>≈</mo><mn>0,806</mn></mrow><annotation encoding="application/x-tex">3{,}3/4096 \approx 0{,}806</annotation></semantics></math> mV. Quy về đầu vào của khuếch đại:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mn>0,806</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><mn>50</mn></mfrac><mo>≈</mo><mn>16</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V</mtext><mspace width="1.0em"></mspace><mo>⇒</mo><mspace width="1.0em"></mspace><mfrac><mrow><mn>16</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V</mtext></mrow><mrow><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow></mfrac><mo>≈</mo><mn>3,2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mA</mtext></mrow><annotation encoding="application/x-tex">\frac{0{,}806\ \text{mV}}{50} \approx 16\ \mu\text{V} \quad\Rightarrow\quad \frac{16\ \mu\text{V}}{5\ \text{m}\Omega} \approx 3{,}2\ \text{mA}</annotation></semantics></math></p>
+<p>Độ phân giải lý thuyết khoảng 3,2 mA mỗi bước. Con số này chưa tính nhiễu và offset, nên đừng nhầm với độ chính xác.</p>
+<figure class="fig"><svg viewBox="0 0 760 330" role="img" aria-label="Chuỗi đo dòng: shunt, khuếch đại đo dòng, bộ lọc và ADC" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="20" y="60" class="tx b">+V</text><line x1="50" y1="56" x2="120" y2="56" class="ln"/><rect x="120" y="42" width="110" height="28" rx="4" class="a3 fl-soft"/><text x="175" y="61" class="ta3 b" text-anchor="middle">shunt 5 mΩ</text><line x1="230" y1="56" x2="400" y2="56" class="ln"/><line x1="330" y1="56" x2="330" y2="76" class="ln"/><rect x="316" y="76" width="28" height="44" rx="4" class="ln fl-bg"/><text x="352" y="104" class="tx">Tải</text><line x1="330" y1="120" x2="330" y2="140" class="ln"/><path d="M60,40 L108,40" class="a3 thick" marker-end="url(#arr)"/><text x="60" y="30" class="ta3 b">I = 0…10 A</text><line x1="132" y1="70" x2="132" y2="170" class="a3"/><line x1="218" y1="70" x2="218" y2="170" class="a3"/><text x="144" y="150" class="tm">50 mV @ 10 A</text><rect x="100" y="170" width="140" height="64" rx="10" class="a3 fl-soft"/><text x="170" y="198" class="tx b" text-anchor="middle">INA</text><text x="170" y="218" class="tm" text-anchor="middle">G = 50</text><line x1="240" y1="202" x2="290" y2="202" class="ln" marker-end="url(#arr)"/><rect x="290" y="170" width="140" height="64" rx="10" class="ln fl-bg"/><text x="360" y="198" class="tx b" text-anchor="middle">Lọc RC</text><text x="360" y="218" class="tm" text-anchor="middle">chống nhiễu đóng cắt</text><line x1="430" y1="202" x2="480" y2="202" class="ln" marker-end="url(#arr)"/><rect x="480" y="170" width="150" height="64" rx="10" class="a3 fl-soft"/><text x="555" y="198" class="tx b" text-anchor="middle">ADC 12 bit</text><text x="555" y="218" class="tm" text-anchor="middle">LSB = 0,806 mV</text><text x="250" y="262" class="ta3 b">2,5 V @ 10 A</text><text x="20" y="300" class="tm">Quy về đầu vào: 1 LSB ≈ 16 µV ≈ 3,2 mA (chưa tính nhiễu và offset)</text></svg><figcaption>Hình 1. Chuỗi đo dòng: shunt 5 mΩ → khuếch đại G = 50 → lọc RC → ADC. Ở 10 A, điện áp là 50 mV rồi 2,5 V.</figcaption></figure>
 </section>
-<section id="a3-phương-án-3-p-mosfet-ở-đường-dương" class="level2 ">
-<h2>Phương án 3: P-MOSFET ở đường dương</h2>
-<section id="a3-nguyên-lý-1" class="level3">
-<h3>Nguyên lý</h3>
-<p>Đây là phương án được dùng nhiều nhất cho mạch 12–24 V dòng vài ampe. Đặt một P-MOSFET trên đường dương với <strong>drain về phía nguồn vào, source về phía tải</strong>, gate nối xuống GND qua điện trở.</p>
-<p>Nghe ngược đời, nhưng đó là mấu chốt:</p>
+</section>
+<section id="a3-low-side-hay-high-side" class="level2 ">
+<h2>2. Low-side hay high-side?</h2>
+<p>Vị trí đặt shunt quyết định cả độ khó của khuếch đại lẫn tính năng của hệ thống.</p>
+<p><strong>Low-side</strong> (shunt nằm giữa tải và GND): - Ưu điểm: điện áp chung gần 0 V, mạch khuếch đại đơn giản và rẻ, có thể dùng op-amp thường. - Nhược điểm: shunt làm GND của tải bị nâng lên (ground shift): ở 10 A, GND của tải cao hơn GND hệ thống 50 mV, có thể ảnh hưởng tới tín hiệu giao tiếp giữa các khối. Không phát hiện được sự cố khi tải bị chập xuống đất ở phía trên shunt (dòng đi vòng, không qua shunt).</p>
+<p><strong>High-side</strong> (shunt nằm giữa nguồn và tải): - Ưu điểm: GND tải nguyên vẹn; phát hiện được ngắn mạch xuống đất. - Nhược điểm: điện áp chung (common-mode voltage) bằng điện áp nguồn, đòi hỏi khuếch đại chịu được điện áp này và có CMRR tốt.</p>
+<p>Chọn low-side khi hệ thống chỉ có một GND chung và không cần phát hiện chập xuống đất; chọn high-side khi tải cần GND sạch hoặc cần bảo vệ ngắn mạch (ví dụ driver motor, bộ sạc pin).</p>
+<figure class="fig"><svg viewBox="0 0 760 300" role="img" aria-label="So sánh đặt shunt phía thấp (low-side) và phía cao (high-side)" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="180" y="22" class="tx b" text-anchor="middle">Low-side</text><text x="60" y="52" class="tx b">+V</text><line x1="100" y1="48" x2="230" y2="48" class="ln"/><line x1="180" y1="48" x2="180" y2="76" class="ln"/><rect x="166" y="76" width="28" height="56" rx="4" class="ln fl-bg"/><text x="204" y="108" class="tx">Tải</text><line x1="180" y1="132" x2="180" y2="168" class="ln"/><rect x="160" y="168" width="40" height="22" rx="4" class="a3 fl-soft"/><text x="210" y="166" class="ta3 b">shunt</text><line x1="180" y1="190" x2="180" y2="236" class="ln"/><line x1="166" y1="236" x2="194" y2="236" class="ln thick"/><line x1="171" y1="242" x2="189" y2="242" class="ln"/><line x1="176" y1="248" x2="184" y2="248" class="ln"/><line x1="168" y1="179" x2="100" y2="179" class="a3"/><line x1="192" y1="179" x2="280" y2="179" class="a3"/><text x="30" y="262" class="twr b">GND tải cao hơn GND hệ thống 50 mV</text><text x="30" y="282" class="tm">chập tải xuống đất ở phía trên shunt: không phát hiện được</text><line x1="380" y1="14" x2="380" y2="290" class="grid"/><text x="560" y="22" class="tx b" text-anchor="middle">High-side</text><text x="400" y="52" class="tx b">+V</text><line x1="440" y1="48" x2="470" y2="48" class="ln"/><rect x="470" y="37" width="40" height="22" rx="4" class="a3 fl-soft"/><text x="490" y="30" class="ta3 b" text-anchor="middle">shunt</text><line x1="510" y1="48" x2="600" y2="48" class="ln"/><line x1="560" y1="48" x2="560" y2="76" class="ln"/><rect x="546" y="76" width="28" height="56" rx="4" class="ln fl-bg"/><text x="584" y="108" class="tx">Tải</text><line x1="560" y1="132" x2="560" y2="168" class="ln"/><line x1="546" y1="168" x2="574" y2="168" class="ln thick"/><line x1="551" y1="174" x2="569" y2="174" class="ln"/><line x1="556" y1="180" x2="564" y2="180" class="ln"/><line x1="478" y1="59" x2="478" y2="110" class="a3"/><line x1="502" y1="59" x2="502" y2="110" class="a3"/><rect x="450" y="110" width="80" height="34" rx="6" class="a3 fl-soft"/><text x="490" y="132" class="tx b" text-anchor="middle">INA</text><text x="400" y="206" class="tx b">điện áp chung = điện áp nguồn</text><text x="400" y="226" class="tm">cần INA có dải điện áp chung và CMRR phù hợp</text><text x="400" y="262" class="ttip b">GND tải nguyên vẹn, phát hiện được chập</text></svg><figcaption>Hình 2. Low-side đơn giản nhưng gây ground shift; high-side giữ nguyên GND tải nhưng khuếch đại phải chịu điện áp chung cao.</figcaption></figure>
+</section>
+<section id="a3-ảnh-hưởng-của-cmrr-trong-high-side" class="level2 ">
+<h2>3. Ảnh hưởng của CMRR trong high-side</h2>
+<p>Với high-side trên đường nguồn 48 V, khuếch đại phải triệt thành phần chung 48 V để chỉ giữ lại 50 mV. Giả sử CMRR = 100 dB, tức tỉ số <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>5</mn></msup><annotation encoding="application/x-tex">10^{5}</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>e</mi><mi>r</mi><mi>r</mi><mo>,</mo><mi>C</mi><mi>M</mi></mrow></msub><mo>=</mo><mfrac><mrow><mn>48</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><msup><mn>10</mn><mn>5</mn></msup></mfrac><mo>=</mo><mn>480</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{err,CM} = \frac{48\ \text{V}}{10^{5}} = 480\ \mu\text{V}</annotation></semantics></math></p>
+<p>Quy về dòng:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>e</mi><mi>r</mi><mi>r</mi></mrow></msub><mo>=</mo><mfrac><mrow><mn>480</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V</mtext></mrow><mrow><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow></mfrac><mo>=</mo><mn>96</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mA</mtext></mrow><annotation encoding="application/x-tex">I_{err} = \frac{480\ \mu\text{V}}{5\ \text{m}\Omega} = 96\ \text{mA}</annotation></semantics></math></p>
+<p>Sai số 96 mA chỉ do điện áp chung, chưa kể gì khác. Ở dòng 1 A đó là gần 10%. Nếu điện áp nguồn dao động (ví dụ nguồn xung có ripple), sai số này còn dao động theo. Vì vậy, với high-side ở điện áp cao, phải chọn khuếch đại có CMRR cao và có dải điện áp chung đủ lớn so với đường nguồn (đọc kỹ trong datasheet).</p>
+</section>
+<section id="a3-sai-số-offset-kẻ-thù-ở-dòng-nhỏ" class="level2 ">
+<h2>4. Sai số offset: kẻ thù ở dòng nhỏ</h2>
+<p>Giả sử khuếch đại có điện áp offset 50 µV (giá trị minh họa, cần xem datasheet của linh kiện cụ thể). Quy về dòng:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>e</mi><mi>r</mi><mi>r</mi><mo>,</mo><mi>o</mi><mi>s</mi></mrow></msub><mo>=</mo><mfrac><mrow><mn>50</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V</mtext></mrow><mrow><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow></mfrac><mo>=</mo><mn>10</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mA</mtext></mrow><annotation encoding="application/x-tex">I_{err,os} = \frac{50\ \mu\text{V}}{5\ \text{m}\Omega} = 10\ \text{mA}</annotation></semantics></math></p>
+<p>Sai số 10 mA không đổi bất kể dòng. Ở dòng 10 A thì chỉ 0,1%, nhưng ở dòng 100 mA:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mn>50</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V</mtext></mrow><mrow><mn>0,1</mn><mo>×</mo><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow></mfrac><mo>=</mo><mfrac><mrow><mn>50</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V</mtext></mrow><mrow><mn>0,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow></mfrac><mo>=</mo><mn>10</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">\frac{50\ \mu\text{V}}{0{,}1 \times 5\ \text{m}\Omega} = \frac{50\ \mu\text{V}}{0{,}5\ \text{mV}} = 10\%</annotation></semantics></math></p>
+<p>Đây là lý do mạch đo dòng “đẹp ở dòng lớn, tệ ở dòng nhỏ”. Có ba cách xử lý:</p>
 <ol type="1">
-<li><strong>Khi cắm đúng cực:</strong> lúc vừa cấp nguồn, diode thân (anode ở drain, cathode ở source) dẫn trước, đưa source lên khoảng 11,3 V. Gate ở 0 V, nên VGS ≈ −11,3 V, MOSFET mở hoàn toàn. Dòng chạy qua kênh dẫn có RDS(on) nhỏ, diode thân bị “nối tắt” và không còn dẫn.</li>
-<li><strong>Khi cắm ngược:</strong> drain ở −12 V, diode thân phân cực ngược. Gate nối GND (lúc này là cực +12 V của nguồn cắm ngược), VGS ≥ 0, MOSFET tắt. Không có đường cho dòng chạy.</li>
+<li>Tăng giá trị shunt (đổi lấy tổn hao), ví dụ gấp đôi shunt thì sai số tương đối giảm một nửa.</li>
+<li>Chọn khuếch đại có offset thấp (loại zero-drift, offset cỡ vài µV), đổi lại giá cao hơn.</li>
+<li>Hiệu chuẩn bằng phần mềm: đo giá trị ở dòng bằng 0 và trừ đi. Phương pháp này sửa được offset cố định nhưng không sửa được độ trôi theo nhiệt độ.</li>
 </ol>
-<figure class="fig"><svg viewBox="0 0 760 340" role="img" aria-label="Hai trạng thái của mạch P-MOSFET khi cắm đúng và cắm ngược cực" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="20" y="115" class="tx b">+12 V</text><line x1="70" y1="110" x2="140" y2="110" class="ln"/><rect x="140" y="88" width="80" height="44" rx="8" class="a3 fl-bg"/><text x="180" y="115" class="ta3 b" text-anchor="middle">P-MOSFET</text><text x="132" y="82" class="tm">D</text><text x="222" y="82" class="tm">S</text><line x1="220" y1="110" x2="340" y2="110" class="ln"/><path d="M125,110 L125,60 L172,60" class="mu"/><path d="M188,60 L235,60 L235,110" class="mu"/><polygon points="173,52 173,68 187,60" class="fl-mu"/><line x1="187" y1="51" x2="187" y2="69" class="mu"/><text x="180" y="46" class="tm" text-anchor="middle">diode thân</text><line x1="180" y1="132" x2="180" y2="170" class="ln"/><text x="186" y="150" class="tm">G</text><circle cx="180" cy="170" r="3" class="fl-ink"/><rect x="172" y="182" width="16" height="40" rx="3" class="ln fl-bg"/><line x1="180" y1="170" x2="180" y2="182" class="ln"/><line x1="180" y1="222" x2="180" y2="270" class="ln"/><text x="166" y="207" class="tm" text-anchor="end">10 kΩ</text><line x1="340" y1="110" x2="340" y2="140" class="ln"/><rect x="318" y="140" width="44" height="60" rx="6" class="ln fl-bg"/><text x="340" y="175" class="tx b" text-anchor="middle">Tải</text><line x1="340" y1="200" x2="340" y2="270" class="ln"/><line x1="70" y1="270" x2="340" y2="270" class="ln"/><text x="20" y="275" class="tx b">GND</text><path d="M80,96 L350,96" class="tip thick" marker-end="url(#arr)"/><text x="20" y="24" class="ttip b">Cắm đúng cực: MOSFET mở</text><text x="20" y="304" class="ttip b">V<tspan class="sub">GS</tspan> ≈ −12 V → kênh dẫn mở</text><text x="20" y="324" class="tm">dòng đi qua R<tspan class="sub">DS(on)</tspan>, không qua diode thân</text><line x1="380" y1="20" x2="380" y2="290" class="grid"/><text x="400" y="115" class="tx b">−12 V</text><line x1="450" y1="110" x2="520" y2="110" class="ln"/><rect x="520" y="88" width="80" height="44" rx="8" class="a3 fl-bg"/><text x="560" y="115" class="ta3 b" text-anchor="middle">P-MOSFET</text><text x="512" y="82" class="tm">D</text><text x="602" y="82" class="tm">S</text><line x1="600" y1="110" x2="720" y2="110" class="ln"/><path d="M505,110 L505,60 L552,60" class="mu"/><path d="M568,60 L615,60 L615,110" class="mu"/><polygon points="553,52 553,68 567,60" class="fl-mu"/><line x1="567" y1="51" x2="567" y2="69" class="mu"/><text x="560" y="46" class="tm" text-anchor="middle">diode thân</text><line x1="560" y1="132" x2="560" y2="170" class="ln"/><text x="566" y="150" class="tm">G</text><circle cx="560" cy="170" r="3" class="fl-ink"/><rect x="552" y="182" width="16" height="40" rx="3" class="ln fl-bg"/><line x1="560" y1="170" x2="560" y2="182" class="ln"/><line x1="560" y1="222" x2="560" y2="270" class="ln"/><text x="546" y="207" class="tm" text-anchor="end">10 kΩ</text><line x1="720" y1="110" x2="720" y2="140" class="ln"/><rect x="698" y="140" width="44" height="60" rx="6" class="ln fl-bg"/><text x="720" y="175" class="tx b" text-anchor="middle">Tải</text><line x1="720" y1="200" x2="720" y2="270" class="ln"/><line x1="450" y1="270" x2="720" y2="270" class="ln"/><text x="400" y="275" class="tx b">+12 V</text><text x="400" y="24" class="twr b">Cắm ngược cực: MOSFET tắt</text><line x1="548" y1="48" x2="572" y2="72" class="wr thick"/><line x1="572" y1="48" x2="548" y2="72" class="wr thick"/><text x="400" y="304" class="twr b">V<tspan class="sub">GS</tspan> ≥ 0 → MOSFET tắt</text><text x="400" y="324" class="tm">diode thân phân cực ngược, không có dòng</text></svg><figcaption>Hình 2. Hai trạng thái của mạch P-MOSFET: cắm đúng cực thì kênh dẫn mở, cắm ngược thì MOSFET tắt và diode thân phân cực ngược.</figcaption></figure>
 </section>
-<section id="a3-tính-toán-1" class="level3">
-<h3>Tính toán</h3>
-<p>Chọn P-MOSFET có RDS(on) = 20 mΩ ở VGS = −10 V (giá trị ví dụ):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>Q</mi></msub><mo>=</mo><msup><mi>I</mi><mn>2</mn></msup><mo>×</mo><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>=</mo><msup><mn>3</mn><mn>2</mn></msup><mo>×</mo><mn>0,020</mn><mo>=</mo><mn>0,18</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{Q} = I^2 \times R_{DS(on)} = 3^2 \times 0{,}020 = 0{,}18\ \text{W}</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>d</mi><mi>r</mi><mi>o</mi><mi>p</mi></mrow></msub><mo>=</mo><mi>I</mi><mo>×</mo><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>=</mo><mn>3</mn><mo>×</mo><mn>0,020</mn><mo>=</mo><mn>0,06</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{drop} = I \times R_{DS(on)} = 3 \times 0{,}020 = 0{,}06\ \text{V}</annotation></semantics></math></p>
-<p>So với diode: tổn hao giảm từ 1,5 W xuống 0,18 W (khoảng 8 lần), sụt áp giảm từ 0,5 V xuống 60 mV. Nhớ nhân thêm hệ số nhiệt của RDS(on), khoảng 1,3–1,5 lần ở nhiệt độ làm việc, vẫn dưới 0,3 W.</p>
-</section>
-<section id="a3-bảo-vệ-gate-bằng-zener" class="level3">
-<h3>Bảo vệ gate bằng zener</h3>
-<p>VGS(max) của đa số MOSFET là ±20 V. Ở hệ 12 V, điện áp vào có thể lên 16 V khi sạc ắc quy, và có xung quá áp còn cao hơn. Vì vậy cần một <strong>diode zener</strong> từ gate lên source để kẹp |VGS|, cộng một điện trở gate xuống GND để giới hạn dòng zener.</p>
-<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ zener 15 V, điện trở 10 kΩ. Khi điện áp vào lên 24 V trong một xung quá áp:</p></div>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mi>Z</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>−</mo><msub><mi>V</mi><mi>Z</mi></msub></mrow><msub><mi>R</mi><mi>G</mi></msub></mfrac><mo>=</mo><mfrac><mrow><mn>24</mn><mo>−</mo><mn>15</mn></mrow><mrow><mn>10</mn><mspace width="0.167em"></mspace><mn>000</mn></mrow></mfrac><mo>=</mo><mn>0,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mA</mtext></mrow><annotation encoding="application/x-tex">I_Z = \frac{V_{IN} - V_Z}{R_G} = \frac{24 - 15}{10\,000} = 0{,}9\ \text{mA}</annotation></semantics></math></p>
-<p>Dòng nhỏ, zener loại nhỏ dư sức chịu, và VGS được giữ ở −15 V, an toàn so với giới hạn ±20 V.</p>
-</section>
-<section id="a3-chọn-p-mosfet" class="level3">
-<h3>Chọn P-MOSFET</h3>
+<section id="a3-sai-số-của-chính-shunt" class="level2 ">
+<h2>5. Sai số của chính shunt</h2>
 <ul>
-<li><strong>VDS(max)</strong> ≥ 30 V cho hệ 12 V; ≥ 40–60 V nếu là hệ thống ô tô có xung load dump (cần TVS ở đầu vào).</li>
-<li><strong>RDS(on) được đảm bảo ở VGS = −4,5 V</strong> hoặc thấp hơn: khi điện áp vào tụt xuống 9 V, hoặc thấp hơn khi khởi động động cơ, MOSFET vẫn phải mở tốt. Đây đúng là bẫy “RDS(on) phải đọc kèm VGS” của bài MOSFET.</li>
-<li><strong>Vỏ có tản nhiệt tốt</strong> (ví dụ dạng PowerPAK/DPAK, cần kiểm tra lại RθJA trong datasheet), với 0,2–0,3 W thường chỉ cần diện tích đồng vừa phải.</li>
+<li><strong>Dung sai:</strong> shunt 1% cho sai số tuyến tính 1% trên toàn dải. Có thể hiệu chuẩn hệ số này một lần khi sản xuất.</li>
+<li><strong>Hệ số nhiệt (TCR):</strong> với shunt 0,5 W tự nóng lên khoảng 20 °C (ước lượng), TCR 100 ppm/°C cho sai số <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>100</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup><mo>×</mo><mn>20</mn><mo>=</mo><mn>0,2</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">100 \times 10^{-6} \times 20 = 0{,}2\%</annotation></semantics></math>. Nên chọn shunt hợp kim chuyên dụng có TCR thấp (thường 50 ppm/°C trở xuống, cần kiểm tra trong datasheet).</li>
+<li><strong>Tổng hợp sai số:</strong> với các nguồn sai số độc lập có thể cộng căn bậc hai tổng bình phương (RSS). Ví dụ shunt 1% và sai số khuếch đại 0,5% cho <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mrow><msup><mn>1</mn><mn>2</mn></msup><mo>+</mo><mn>0</mn><mo>,</mo><msup><mn>5</mn><mn>2</mn></msup></mrow></msqrt><mo>≈</mo><mn>1,1</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">\sqrt{1^2 + 0{,}5^2} \approx 1{,}1\%</annotation></semantics></math>; nhưng sai số offset và CMRR đã tính ở trên phải xét riêng vì chúng không tỉ lệ theo dòng.</li>
 </ul>
 </section>
-<section id="a3-nhược-điểm-cần-biết" class="level3">
-<h3>Nhược điểm cần biết</h3>
-<p>P-MOSFET <strong>không chặn dòng ngược</strong> khi đã mở. Nếu điện áp vào tụt nhanh hơn điện áp trên tụ phía sau (ví dụ rút nguồn, hoặc nguồn vào bị kéo xuống bởi tải khác), dòng có thể chảy ngược từ tụ về nguồn qua kênh dẫn. Với đa số thiết bị điều này không quan trọng, nhưng với hệ có tụ giữ nguồn (hold-up capacitor) hoặc ghép nhiều nguồn song song (OR-ing), đây là vấn đề.</p>
+<section id="a3-kết-nối-kelvin-sai-số-lớn-nhất-do-layout" class="level2 ">
+<h2>6. Kết nối Kelvin: sai số lớn nhất do layout</h2>
+<p>Với shunt chỉ vài mΩ, điện trở của đường mạch và chân hàn trở nên đáng kể. Nếu lấy tín hiệu đo từ cùng đoạn đường mang dòng, có thể xảy ra tình huống: đường dây chung có điện trở 1 mΩ nằm trong vòng đo của shunt 5 mΩ, sai số lên tới:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mn>1</mn><mn>5</mn></mfrac><mo>=</mo><mn>20</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">\frac{1}{5} = 20\%</annotation></semantics></math></p>
+<p>Giải pháp là <strong>kết nối Kelvin</strong> (kết nối bốn dây): dòng đi qua hai đầu lớn của shunt, còn hai đường tín hiệu đo lấy riêng từ hai pad nhỏ ngay tại thân điện trở, chỉ mang dòng rất nhỏ nên không có sụt áp. Nhiều shunt có sẵn bốn chân Kelvin; nếu dùng shunt hai chân, kéo hai đường đo riêng vào đúng hai đầu pad, đi song song sát nhau về khuếch đại (cặp vi sai, để nhiễu ghép như nhau lên cả hai).</p>
+<figure class="fig"><svg viewBox="0 0 760 260" role="img" aria-label="So sánh lấy tín hiệu từ đường dòng và kết nối Kelvin quanh shunt" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="190" y="22" class="tx b" text-anchor="middle">Lấy tín hiệu từ đường dòng (sai)</text><rect x="20" y="152" width="90" height="16" class="fl-cu"/><rect x="270" y="152" width="90" height="16" class="fl-cu"/><rect x="110" y="136" width="40" height="48" class="fl-cu"/><rect x="230" y="136" width="40" height="48" class="fl-cu"/><rect x="150" y="140" width="80" height="40" rx="3" class="ic fl-ic"/><text x="190" y="165" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">5 mΩ</text><path d="M20,160 L360,160" class="a3 thick" marker-end="url(#arr)" opacity=".7"/><path d="M50,152 L50,96 L170,96 L170,60" class="wr thick" fill="none"/><path d="M330,152 L330,96 L210,96 L210,60" class="wr thick" fill="none"/><line x1="50" y1="190" x2="110" y2="190" class="wr" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="80" y="208" class="twr b" text-anchor="middle">đồng chung 1 mΩ</text><text x="190" y="228" class="twr b" text-anchor="middle">1 mΩ trong vòng đo 5 mΩ → sai số 20%</text><rect x="158" y="36" width="64" height="24" rx="5" class="a3 fl-soft"/><text x="190" y="53" class="tx b" text-anchor="middle">INA</text><line x1="380" y1="14" x2="380" y2="250" class="grid"/><text x="570" y="22" class="tx b" text-anchor="middle">Kết nối Kelvin (đúng)</text><rect x="400" y="152" width="90" height="16" class="fl-cu"/><rect x="650" y="152" width="90" height="16" class="fl-cu"/><rect x="490" y="136" width="40" height="48" class="fl-cu"/><rect x="610" y="136" width="40" height="48" class="fl-cu"/><rect x="530" y="140" width="80" height="40" rx="3" class="ic fl-ic"/><text x="570" y="165" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">5 mΩ</text><path d="M400,160 L740,160" class="a3 thick" marker-end="url(#arr)" opacity=".7"/><path d="M510,136 L510,96 L550,96 L550,60" class="ta3 a3 thick" fill="none"/><path d="M630,136 L630,96 L590,96 L590,60" class="a3 thick" fill="none"/><text x="642" y="86" class="ta3 b">2 đường song</text><text x="642" y="102" class="ta3 b">song, sát nhau</text><text x="570" y="228" class="ttip b" text-anchor="middle">lấy mẫu ngay tại pad, không mang dòng</text><rect x="538" y="36" width="64" height="24" rx="5" class="a3 fl-soft"/><text x="570" y="53" class="tx b" text-anchor="middle">INA</text></svg><figcaption>Hình 3. Đo Kelvin: hai đường đo đi riêng từ phía trong pad shunt, không lấy tín hiệu từ đường dòng lớn.</figcaption></figure>
 </section>
+<section id="a3-lọc-và-chọn-khuếch-đại" class="level2 ">
+<h2>7. Lọc và chọn khuếch đại</h2>
+<p>Trước ngõ vào khuếch đại thường thêm bộ lọc RC vi sai (vài chục Ω và vài chục nF) để lọc nhiễu đóng cắt. Lưu ý: dòng phân cực ngõ vào chạy qua các điện trở lọc tạo thêm sai số điện áp, và hai điện trở phải bằng nhau để không phá cân bằng CMRR. Đọc ví dụ trong datasheet về giá trị lọc tối đa cho khuếch đại bạn chọn.</p>
+<p>Các dòng khuếch đại đo dòng phổ biến của Texas Instruments gồm INA180 (analog, nhiều mức khuếch đại cố định), INA240 (hai chiều, thiết kế cho đo trong mạch PWM có điện áp chung đóng cắt) và INA226 (đầu ra số I²C, tích hợp ADC). Dải điện áp chung, offset, CMRR và băng thông của từng mã khác nhau và cần kiểm tra lại trong datasheet.</p>
+<p>Nếu dòng đo trong mạch điều khiển motor PWM, điện áp chung nhảy giữa 0 và điện áp nguồn theo tần số PWM, khuếch đại phải có khả năng triệt xung chung này nhanh (PWM rejection); khuếch đại thường sẽ cho kết quả sai.</p>
 </section>
-<section id="a3-phương-án-4-ideal-diode-controller-n-mosfet" class="level2 ">
-<h2>Phương án 4: Ideal diode controller + N-MOSFET</h2>
-<section id="a3-nguyên-lý-2" class="level3">
-<h3>Nguyên lý</h3>
-<p><strong>Ideal diode controller</strong> (bộ điều khiển diode lý tưởng) là IC chuyên dụng điều khiển một N-MOSFET nối tiếp trên đường dương sao cho nó hành xử như một diode có sụt áp rất thấp. IC đo điện áp giữa anode (phía nguồn vào) và cathode (phía tải):</p>
-<ul>
-<li>Khi dòng chạy thuận: IC dùng bơm điện tích (charge pump) đẩy gate lên cao hơn source vài volt để N-MOSFET mở. Nhiều IC điều chỉnh sao cho sụt áp chỉ khoảng vài chục mV.</li>
-<li>Khi phát hiện điện áp ra cao hơn điện áp vào (dòng bắt đầu chảy ngược): IC kéo gate xuống nhanh, MOSFET tắt, chặn dòng ngược.</li>
-<li>Khi cắm ngược cực: IC không cấp được điện áp gate, MOSFET tắt, diode thân phân cực ngược.</li>
-</ul>
-<div class="callout why"><span class="callout-tag">Tại sao</span><p>Tại sao dùng N-MOSFET mà không dùng P-MOSFET? Vì ở cùng kích thước và giá, N-MOSFET có RDS(on) thấp hơn nhiều (độ linh động của electron cao hơn lỗ trống). Cái giá là cần charge pump để lái gate cao hơn đường nguồn, và đó chính là việc của IC.</p></div>
-<figure class="fig"><svg viewBox="0 0 760 330" role="img" aria-label="Sơ đồ khối ideal diode controller điều khiển N-MOSFET" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="20" y="85" class="tx b">V<tspan class="sub">IN</tspan></text><line x1="60" y1="80" x2="300" y2="80" class="ln"/><rect x="300" y="58" width="80" height="44" rx="8" class="a3 fl-bg"/><text x="340" y="85" class="ta3 b" text-anchor="middle">N-MOSFET</text><text x="292" y="52" class="tm">S</text><text x="382" y="52" class="tm">D</text><line x1="380" y1="80" x2="640" y2="80" class="ln"/><text x="650" y="85" class="tx b">Tới tải</text><line x1="600" y1="80" x2="600" y2="110" class="ln"/><rect x="578" y="110" width="44" height="60" rx="6" class="ln fl-bg"/><text x="600" y="145" class="tx b" text-anchor="middle">Tải</text><line x1="600" y1="170" x2="600" y2="290" class="ln"/><rect x="160" y="150" width="360" height="120" rx="12" class="a3 fl-soft"/><text x="340" y="175" class="ta3 b" text-anchor="middle">Ideal diode controller</text><rect x="180" y="190" width="140" height="56" rx="8" class="ln fl-bg"/><text x="250" y="215" class="tx b" text-anchor="middle">So sánh</text><text x="250" y="234" class="tm" text-anchor="middle">V<tspan class="sub">A</tspan> − V<tspan class="sub">C</tspan></text><rect x="360" y="190" width="140" height="56" rx="8" class="ln fl-bg"/><text x="430" y="215" class="tx b" text-anchor="middle">Charge pump</text><text x="430" y="234" class="tm" text-anchor="middle">V<tspan class="sub">G</tspan> &gt; V<tspan class="sub">S</tspan> vài V</text><line x1="320" y1="218" x2="360" y2="218" class="ln" marker-end="url(#arr)"/><line x1="200" y1="80" x2="200" y2="150" class="ln"/><circle cx="200" cy="80" r="3" class="fl-ink"/><text x="206" y="140" class="tm">Anode</text><line x1="340" y1="102" x2="340" y2="150" class="a3 thick"/><text x="346" y="140" class="ta3">Gate</text><line x1="480" y1="80" x2="480" y2="150" class="ln"/><circle cx="480" cy="80" r="3" class="fl-ink"/><text x="486" y="140" class="tm">Cathode</text><line x1="340" y1="270" x2="340" y2="290" class="ln"/><line x1="60" y1="290" x2="600" y2="290" class="ln"/><text x="20" y="295" class="tx b">GND</text><text x="380" y="316" class="tm" text-anchor="middle">V<tspan class="sub">A</tspan> &gt; V<tspan class="sub">C</tspan>: mở MOSFET · V<tspan class="sub">C</tspan> &gt; V<tspan class="sub">A</tspan>: tắt nhanh, chặn dòng ngược</text></svg><figcaption>Hình 3. Ideal diode controller lái N-MOSFET bằng charge pump và tắt MOSFET khi phát hiện dòng ngược.</figcaption></figure>
-<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ IC thuộc nhóm này: <strong>LM74700-Q1</strong> (Texas Instruments) và <strong>LTC4359</strong> (Analog Devices). Dải điện áp, dòng tiêu thụ tĩnh và thời gian phản ứng khi dòng ngược cần kiểm tra lại trong datasheet của từng IC.</p></div>
-</section>
-<section id="a3-tính-toán-2" class="level3">
-<h3>Tính toán</h3>
-<p>Với N-MOSFET RDS(on) = 5 mΩ (giá trị ví dụ):</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>Q</mi></msub><mo>=</mo><msup><mn>3</mn><mn>2</mn></msup><mo>×</mo><mn>0,005</mn><mo>=</mo><mn>0,045</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{Q} = 3^2 \times 0{,}005 = 0{,}045\ \text{W}</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>d</mi><mi>r</mi><mi>o</mi><mi>p</mi></mrow></msub><mo>=</mo><mn>3</mn><mo>×</mo><mn>0,005</mn><mo>=</mo><mn>0,015</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{drop} = 3 \times 0{,}005 = 0{,}015\ \text{V}</annotation></semantics></math></p>
-<p>Tổn hao gần như không đáng kể, và phương án này chặn được cả dòng ngược, điều mà P-MOSFET không làm được.</p>
-</section>
-</section>
-<section id="a3-so-sánh-tổng-hợp" class="level2 ">
-<h2>So sánh tổng hợp</h2>
-<figure class="fig"><svg viewBox="0 0 760 275" role="img" aria-label="Biểu đồ so sánh tổn hao của bốn phương án chống ngược cực" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="238" y="52" class="tx" text-anchor="end">Diode Schottky nối tiếp</text><rect x="250" y="36" width="440.0" height="24" rx="4" class="fl-wr"/><text x="698.0" y="53" class="tx b">1,5 W</text><text x="238" y="104" class="tx" text-anchor="end">Diode song song + cầu chì</text><rect x="250" y="88" width="3.0" height="24" rx="4" class="fl-mu"/><text x="261.0" y="105" class="tx b">~0 W</text><text x="238" y="156" class="tx" text-anchor="end">P-MOSFET 20 mΩ</text><rect x="250" y="140" width="52.8" height="24" rx="4" class="fl-a3"/><text x="310.8" y="157" class="tx b">0,18 W</text><text x="238" y="208" class="tx" text-anchor="end">Ideal diode + N-MOSFET 5 mΩ</text><rect x="250" y="192" width="13.2" height="24" rx="4" class="fl-a1"/><text x="271.2" y="209" class="tx b">0,045 W</text><line x1="250" y1="24" x2="250" y2="240" class="ln"/><text x="250" y="262" class="tm">Tổn hao ở 3 A (W), cùng thang đo</text></svg><figcaption>Hình 4. Tổn hao ở 3 A của bốn phương án (giá trị tính trong bài với linh kiện ví dụ).</figcaption></figure>
-<div class="tablewrap"><table>
-<colgroup>
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th>Tiêu chí</th>
-<th>Diode nối tiếp</th>
-<th>Diode song song + cầu chì</th>
-<th>P-MOSFET</th>
-<th>Ideal diode + N-MOSFET</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>Tổn hao ở 3 A</td>
-<td>1,5 W</td>
-<td>~0 W</td>
-<td>0,18 W</td>
-<td>0,045 W</td>
-</tr>
-<tr class="even">
-<td>Sụt áp</td>
-<td>~0,5 V</td>
-<td>~0 V</td>
-<td>60 mV</td>
-<td>15 mV (cộng sai số điều khiển)</td>
-</tr>
-<tr class="odd">
-<td>Phải thay linh kiện sau khi cắm ngược</td>
-<td>Không</td>
-<td>Có (cầu chì)</td>
-<td>Không</td>
-<td>Không</td>
-</tr>
-<tr class="even">
-<td>Chặn dòng ngược khi nguồn sụt</td>
-<td>Có</td>
-<td>Không</td>
-<td>Không</td>
-<td>Có</td>
-</tr>
-<tr class="odd">
-<td>Số linh kiện</td>
-<td>1</td>
-<td>2</td>
-<td>3 (MOSFET, zener, điện trở)</td>
-<td>IC + MOSFET + vài linh kiện</td>
-</tr>
-<tr class="even">
-<td>Phù hợp</td>
-<td>Dòng &lt; 1 A, mạch đơn giản</td>
-<td>Thiết bị giá rẻ</td>
-<td>12–24 V, vài ampe</td>
-<td>Ô tô, OR-ing nguồn, dòng lớn</td>
-</tr>
-</tbody>
-</table></div>
-<p>Với bài toán 12 V/3 A, không cần chặn dòng ngược, <strong>P-MOSFET là lựa chọn cân bằng nhất</strong>. Nếu thiết bị chạy trong ô tô hoặc có hai nguồn cấp song song, chuyển sang ideal diode controller.</p>
-</section>
-<section id="a3-lưu-ý-layout-và-thực-tế" class="level2 ">
-<h2>Lưu ý layout và thực tế</h2>
-<ul>
-<li>Đặt mạch chống ngược cực <strong>ngay sau connector nguồn</strong>, trước mọi tụ điện. Nếu tụ phân cực (tụ hóa) nằm trước MOSFET, nó vẫn bị đặt điện áp ngược khi cắm sai.</li>
-<li>Thêm <strong>TVS</strong> ở đầu vào cho hệ ô tô hoặc dây nguồn dài, vì xung quá áp và ngược cực thường đi cùng nhau.</li>
-<li>Đặt điện trở gate và zener sát MOSFET, đường gate ngắn.</li>
-<li>Đổ đồng rộng ở chân drain của MOSFET (với vỏ DPAK/PowerPAK, tab là drain) để tản nhiệt.</li>
-<li>Kiểm tra bằng nguồn lab có giới hạn dòng: cấp −12 V vào, giới hạn dòng 100 mA, đo dòng thực tế phải gần 0.</li>
-</ul>
+<section id="a3-cảnh-báo-an-toàn" class="level2 ">
+<h2>8. Cảnh báo an toàn</h2>
+<p>Khi đo dòng ở điện áp nguồn cao (cao hơn khoảng 50 V DC) hoặc nguồn AC, phần điện áp chung có thể nguy hiểm tới tính mạng; khi đó cần cách ly (khuếch đại cách ly hoặc cảm biến Hall) và tuân thủ khoảng cách cách điện. Điện trở shunt có thể rất nóng ở dòng lớn, không chạm tay khi đang chạy.</p>
 </section>
 <section id="a3-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
 <h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
 <ul>
-<li>Lắp P-MOSFET ngược chiều (source về phía nguồn vào): diode thân dẫn khi cắm ngược và mạch không được bảo vệ.</li>
-<li>Không có zener bảo vệ gate, VGS vượt ±20 V khi có xung quá áp.</li>
-<li>Chọn MOSFET có RDS(on) chỉ được đảm bảo ở VGS = −10 V, mạch nóng khi điện áp vào tụt.</li>
-<li>Dùng diode Schottky có VRRM sát điện áp làm việc, rò ngược lớn khi nóng.</li>
-<li>Đặt tụ hóa đầu vào trước mạch chống ngược cực.</li>
-<li>Dùng P-MOSFET cho mạch OR-ing hai nguồn, dòng chảy ngược giữa hai nguồn.</li>
-<li>Thử ngược cực trực tiếp trên ắc quy không có cầu chì.</li>
+<li>Chọn shunt quá nhỏ so với offset của khuếch đại, ở dòng nhỏ sai số hàng chục phần trăm.</li>
+<li>Quên tính công suất và chọn điện trở shunt định mức sát công suất thực.</li>
+<li>Lấy tín hiệu đo từ đường dòng chung thay vì kết nối Kelvin.</li>
+<li>Dùng khuếch đại không đủ dải điện áp chung cho đường nguồn high-side.</li>
+<li>Dùng low-side rồi bị nhiễu do GND dịch ở mạch giao tiếp.</li>
+<li>Hai điện trở lọc ngõ vào không bằng nhau, làm hỏng CMRR.</li>
+<li>Dùng khuếch đại thường để đo dòng motor PWM, kết quả nhảy loạn.</li>
+<li>Bỏ qua hệ số nhiệt của shunt khi dòng lớn kéo dài.</li>
 </ul>
 </section>
 <section id="a3-tổng-kết" class="level2 summary">
 <h2>Tổng kết</h2>
 <ul>
-<li>Diode nối tiếp đơn giản nhưng tốn 1,5 W ở 3 A; chỉ hợp với dòng nhỏ.</li>
-<li>Diode song song + cầu chì không tổn hao nhưng phải thay cầu chì sau mỗi lần cắm ngược.</li>
-<li>P-MOSFET đặt drain về phía nguồn vào giảm tổn hao xuống khoảng 0,18 W; nhớ zener bảo vệ gate.</li>
-<li>Ideal diode controller + N-MOSFET cho tổn hao thấp nhất và chặn được dòng ngược, phù hợp ô tô và OR-ing nguồn.</li>
-<li>Luôn đặt mạch chống ngược cực trước mọi tụ phân cực, ngay sau connector.</li>
+<li>Giá trị shunt cân bằng giữa tín hiệu (lớn thì dễ đo) và tổn hao (nhỏ thì nguội); với 10 A, shunt 5 mΩ cho 50 mV và 0,5 W.</li>
+<li>Chọn hệ số khuếch đại sao cho điện áp ra ở dòng tối đa chiếm 70–90% dải ADC.</li>
+<li>Low-side đơn giản nhưng làm GND tải dịch; high-side giữ GND sạch nhưng cần khuếch đại chịu điện áp chung và CMRR cao.</li>
+<li>Offset là sai số cố định quy về dòng (50 µV trên 5 mΩ là 10 mA), gây sai số lớn ở dòng nhỏ.</li>
+<li>Dùng kết nối Kelvin để tránh sai số từ điện trở đường mạch.</li>
 </ul>
 </section>
 <section id="a3-gợi-ý-đọc-tiếp" class="level2 next">
 <h2>Gợi ý đọc tiếp</h2>
 <ul>
-<li>Thiết kế mạch OR-ing hai nguồn cấp bằng ideal diode</li>
-<li>Chọn TVS bảo vệ quá áp đầu vào cho thiết bị 12 V/24 V</li>
-<li>Mạch hạn dòng khởi động (inrush current limiter) dùng MOSFET</li>
+<li>So sánh đo dòng bằng shunt, cảm biến Hall và biến dòng (CT)</li>
+<li>Thiết kế bộ lọc anti-aliasing cho ADC khi đo dòng trong mạch PWM</li>
+<li>Hiệu chuẩn offset và gain cho mạch đo dòng trong sản xuất</li>
 </ul>
 </section>
 <section id="a3-nguồn-tham-khảo" class="level2 refs">
 <h2>Nguồn tham khảo</h2>
 <ul>
-<li>Texas Instruments, Application Report SLVA139 “Reverse Current/Battery Protection Circuits”.</li>
-<li>Texas Instruments, datasheet LM74700-Q1 (Low IQ Reverse Battery Protection Ideal Diode Controller).</li>
-<li>Analog Devices, datasheet LTC4359 (Ideal Diode Controller with Reverse Input Protection).</li>
-<li>Datasheet các diode Schottky 40 V/5 A phổ thông để đối chiếu đồ thị VF–IF và dòng rò theo nhiệt độ.</li>
+<li>Texas Instruments, tài liệu “Current Sense Amplifiers” và các bài viết về lựa chọn điện trở shunt trên TI E2E / TI Precision Labs (cần kiểm tra tiêu đề và mã tài liệu chính xác).</li>
+<li>Datasheet INA180, INA240, INA226 của Texas Instruments (offset, CMRR, dải điện áp chung, điều kiện lọc ngõ vào).</li>
+<li>Analog Devices, các bài viết kỹ thuật về chọn điện trở shunt và kết nối Kelvin (cần kiểm tra tiêu đề cụ thể).</li>
+<li>Paul Horowitz, Winfield Hill, “The Art of Electronics”, 3rd Edition, phần về khuếch đại vi sai và đo dòng.</li>
 </ul>
 </section>
 </div>
   <a class="totop" href="#top">↑ Về đầu trang</a>
 </article></main>
 </div>
-<footer class="foot">Blog phần cứng · Bản nháp biên tập tuần 12/10/2026 · Hình minh họa là sơ đồ nguyên lý, số liệu thật lấy theo datasheet linh kiện cụ thể.</footer>
+<footer class="foot">Blog phần cứng · Tuần 2 · 19/10/2026 · Hình minh họa là sơ đồ nguyên lý, số liệu thật lấy theo datasheet linh kiện cụ thể.</footer>
 <script>
 (function(){
   var bar=document.getElementById('bar');
