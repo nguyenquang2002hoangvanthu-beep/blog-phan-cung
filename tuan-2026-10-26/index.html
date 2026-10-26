@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog phần cứng</title>
+<meta property="og:title" content="Blog phần cứng">
+<meta name="description" content="Ba bài kỹ thuật phần cứng tuần 26/10/2026: đo ripple nguồn bằng oscilloscope, tính tổn hao mạch boost 5V→12V/2A và mạch sạc pin lithium 1 cell.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>:root{
+  --bg:#f6f5f1; --paper:#ffffff; --ink:#1b1f24; --muted:#5d6670; --line:#e3e1da;
+  --a1:#0f8b8d; --a1-soft:#e2f3f2; --a2:#c76a12; --a2-soft:#fbeedd; --a3:#6b4fc8; --a3-soft:#ece8fb;
+  --warn:#c9372c; --warn-soft:#fbe7e4; --tip:#2f7d32; --tip-soft:#e5f2e3;
+  --why:#4a5bd0; --why-soft:#e8eafb;
+  --hero:#12161c; --hero-ink:#f4f1ea; --grid:rgba(255,255,255,.06);
+  --pcb:#e3efe4; --cu:#e9c79a; --part:#ffffff; --ic:#2a3038; --ic-ink:#ffffff;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1216; --paper:#171b21; --ink:#e7e9ec; --muted:#9aa4ae; --line:#2a3038;
+  --a1:#3cc4c2; --a1-soft:#11302f; --a2:#f0a24d; --a2-soft:#3a2a17; --a3:#b39cff; --a3-soft:#262040;
+  --warn:#ff7a6b; --warn-soft:#3a1d1a; --tip:#7fcf84; --tip-soft:#18301a;
+  --why:#9aa6ff; --why-soft:#1f2342;
+  --hero:#0a0c10; --pcb:#18281b; --cu:#7a5a33; --part:#262c34; --ic:#3a424c;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f1216; --paper:#171b21; --ink:#e7e9ec; --muted:#9aa4ae; --line:#2a3038;
+  --a1:#3cc4c2; --a1-soft:#11302f; --a2:#f0a24d; --a2-soft:#3a2a17; --a3:#b39cff; --a3-soft:#262040;
+  --warn:#ff7a6b; --warn-soft:#3a1d1a; --tip:#7fcf84; --tip-soft:#18301a;
+  --why:#9aa6ff; --why-soft:#1f2342;
+  --hero:#0a0c10; --pcb:#18281b; --cu:#7a5a33; --part:#262c34; --ic:#3a424c; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.75 "Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
+a{color:inherit}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:50}
+#bar{height:100%;width:0;background:linear-gradient(90deg,var(--a1),var(--a2),var(--a3))}
+
+/* hero */
+.hero{position:relative;background:var(--hero);color:var(--hero-ink);overflow:hidden}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;mask-image:radial-gradient(ellipse at 70% 20%,#000 30%,transparent 75%)}
+.hero-inner{position:relative;max-width:1120px;margin:0 auto;padding:72px 24px 56px}
+.kicker{font:600 13px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:#9fb3c0;margin:0 0 18px}
+.hero h1{font-size:clamp(30px,5vw,52px);line-height:1.15;margin:0 0 18px;font-weight:800;max-width:900px;letter-spacing:-.01em}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,#3cc4c2,#f0a24d,#b39cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-sub{max-width:680px;color:#c4cad1;margin:0 0 36px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{display:flex;flex-direction:column;gap:8px;text-decoration:none;padding:22px 22px 18px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-top:4px solid var(--a1);transition:transform .2s,background .2s}
+.card.a2{border-top-color:var(--a2)}
+.card:hover{transform:translateY(-3px);background:rgba(255,255,255,.09)}
+.card strong{font-size:20px;line-height:1.35}
+.card-num,.card-meta{font:500 13px/1.4 "JetBrains Mono",monospace;color:#9fb3c0}
+.card-go{margin-top:auto;font-weight:600;color:#3cc4c2}.card.a2 .card-go{color:#f0a24d}
+
+/* layout */
+.layout{max-width:1120px;margin:0 auto;padding:40px 24px;display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px}
+.toc{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);overflow:auto;font-size:14px;line-height:1.5}
+.toc-head{font:700 12px/1 "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+.toc-group{margin-bottom:20px}
+.toc-title{display:block;font-weight:700;text-decoration:none;color:var(--a1);margin-bottom:6px}
+.toc-group.a2 .toc-title{color:var(--a2)}
+.toc ol{list-style:none;margin:0;padding:0 0 0 10px;border-left:2px solid var(--line)}
+.toc ol a{display:block;padding:4px 8px;margin-left:-12px;border-left:2px solid transparent;text-decoration:none;color:var(--muted)}
+.toc ol a:hover{color:var(--ink)}
+.toc ol a.on{color:var(--ink);border-left-color:var(--a1);font-weight:600}
+.toc-group.a2 ol a.on{border-left-color:var(--a2)}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr);padding:24px 16px}.toc{display:none}.hero-inner{padding:48px 16px 40px}}
+
+/* article */
+.post{--acc:var(--a1);--acc-soft:var(--a1-soft);background:var(--paper);border-radius:20px;box-shadow:var(--shadow);margin-bottom:48px;overflow:hidden}
+.post.a2{--acc:var(--a2);--acc-soft:var(--a2-soft)}
+.post-head{padding:40px 48px 28px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--acc-soft),transparent)}
+.post-num{font:700 64px/1 "JetBrains Mono",monospace;color:var(--acc);opacity:.25;margin-bottom:-18px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.chip{font:600 12px/1 "Be Vietnam Pro",sans-serif;padding:7px 11px;border-radius:999px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
+.chip.cat{background:var(--acc);border-color:var(--acc);color:var(--paper)}
+.chip.lvl{color:var(--acc);border-color:var(--acc)}
+.post-title{font-size:clamp(26px,3.6vw,38px);line-height:1.2;margin:0 0 12px;font-weight:800;letter-spacing:-.01em}
+.lede{color:var(--muted);margin:0 0 14px;font-size:18px}
+.tags{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;margin:0;padding:0;font:500 13px/1.4 "JetBrains Mono",monospace;color:var(--acc)}
+.post-body{padding:32px 48px 8px}
+@media (max-width:700px){.post-head{padding:28px 18px 20px}.post-body{padding:20px 18px 4px}.post{border-radius:14px}body{font-size:16px}}
+.post-body>p:first-child{font-size:19px;line-height:1.7}
+.post-body>p:first-child::first-letter{float:left;font-size:3.4em;line-height:.9;font-weight:800;color:var(--acc);margin:6px 10px 0 0}
+.post-body h2{font-size:26px;line-height:1.3;margin:44px 0 14px;padding-top:6px;position:relative;scroll-margin-top:20px}
+.post-body h2::before{content:"";display:block;width:44px;height:4px;border-radius:2px;background:var(--acc);margin-bottom:14px}
+.post-body h3{font-size:20px;margin:30px 0 8px;color:var(--acc);scroll-margin-top:20px}
+.post-body p{margin:0 0 16px}
+.post-body strong{font-weight:700}
+.post-body code{font-family:"JetBrains Mono",monospace;font-size:.9em;background:var(--acc-soft);padding:1px 6px;border-radius:5px}
+.post-body ul,.post-body ol{padding-left:24px;margin:0 0 18px}
+.post-body li{margin:4px 0}
+math[display="block"]{display:block;overflow-x:auto;overflow-y:hidden;margin:18px 0;padding:16px 18px;background:var(--acc-soft);border-left:4px solid var(--acc);border-radius:0 12px 12px 0;font-size:1.12em}
+math{font-family:"Latin Modern Math","STIX Two Math","Cambria Math",math}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:26px 0 30px}
+.stat{padding:16px;border-radius:14px;border:1px solid var(--line);background:var(--paper);position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc)}
+.stat b{display:block;font:700 26px/1.1 "JetBrains Mono",monospace;color:var(--acc);margin-bottom:6px}
+.stat span{display:block;font-size:13.5px;line-height:1.4;color:var(--muted)}
+
+/* callouts */
+.callout{position:relative;margin:22px 0;padding:18px 20px 14px;border-radius:14px;background:var(--why-soft);border:1px solid transparent}
+.callout p{margin:0 0 6px}
+.callout-tag{display:inline-block;font:700 11px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:6px;margin-bottom:10px;background:var(--why);color:var(--paper)}
+.callout.warn{background:var(--warn-soft)}.callout.warn .callout-tag{background:var(--warn)}
+.callout.tip{background:var(--tip-soft)}.callout.tip .callout-tag{background:var(--tip)}
+.callout.note{background:var(--acc-soft)}.callout.note .callout-tag{background:var(--acc)}
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:18px 0 24px;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th{background:var(--acc-soft);text-align:left;font-weight:700}
+th,td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+/* special sections */
+section.basics{background:var(--bg);border-radius:14px;padding:4px 22px 8px;margin:28px 0}
+section.basics h2{font-size:20px;margin-top:18px}
+section.pitfalls ul{list-style:none;padding:0;display:grid;gap:10px}
+section.pitfalls li{padding:12px 14px 12px 46px;border-radius:12px;background:var(--warn-soft);position:relative;margin:0}
+section.pitfalls li::before{content:"✕";position:absolute;left:14px;top:11px;width:22px;height:22px;border-radius:50%;background:var(--warn);color:var(--paper);font:700 12px/22px sans-serif;text-align:center}
+section.summary{background:var(--hero);color:var(--hero-ink);border-radius:16px;padding:6px 26px 14px;margin:40px 0 24px}
+section.summary h2{color:var(--hero-ink)}
+section.summary ul{list-style:none;padding:0;counter-reset:s}
+section.summary li{counter-increment:s;padding:8px 0 8px 44px;position:relative;border-bottom:1px solid rgba(255,255,255,.1)}
+section.summary li:last-child{border:0}
+section.summary li::before{content:counter(s,decimal-leading-zero);position:absolute;left:0;top:8px;font:700 18px/1.5 "JetBrains Mono",monospace;color:var(--acc)}
+section.next ul{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+section.next li{margin:0;padding:16px;border:1px dashed var(--acc);border-radius:12px;font-weight:600;line-height:1.45}
+section.next li::before{content:"Đọc tiếp →";display:block;font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin-bottom:8px}
+section.refs{font-size:14.5px;color:var(--muted);border-top:1px solid var(--line);margin-top:36px}
+section.refs h2{font-size:18px}
+section.refs h2::before{display:none}
+
+/* figures */
+.fig{margin:28px 0;padding:18px 18px 12px;border:1px solid var(--line);border-radius:16px;background:var(--paper)}
+.fig svg{display:block;width:100%;height:auto;font-family:"Be Vietnam Pro",system-ui,sans-serif}
+.fig figcaption{font-size:14px;line-height:1.55;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.fig svg text{font-size:13px}
+.fig .b{font-weight:700}
+.fig .sub{font-size:9px;baseline-shift:sub}
+.fig .tx{fill:var(--ink)}.fig .tm{fill:var(--muted)}
+.fig .ta1{fill:var(--a1)}.fig .ta2{fill:var(--a2)}.fig .twr{fill:var(--warn)}
+.fig .ln{stroke:var(--ink);stroke-width:1.6;fill:none}
+.fig .mu{stroke:var(--muted);stroke-width:1.2;fill:none}
+.fig .a1{stroke:var(--a1);stroke-width:1.8;fill:none}
+.fig .a2{stroke:var(--a2);stroke-width:1.8;fill:none}
+.fig .wr{stroke:var(--warn);stroke-width:1.8;fill:none}
+.fig .thick{stroke-width:3}
+.fig .dash{stroke-dasharray:5 5}
+.fig .grid{stroke:var(--line);stroke-width:1}
+.fig .fl-ink{fill:var(--ink)}.fig .fl-wr{fill:var(--warn)}.fig .fl-a1{fill:var(--a1)}
+.fig .fl-bg{fill:var(--paper)}
+.fig .fl-soft{fill:var(--acc-soft)}
+.fig .fl-ink2{fill:var(--line)}
+.fig .fl-pcb{fill:var(--pcb)}.fig .fl-cu{fill:var(--cu)}.fig .fl-part{fill:var(--part);stroke:var(--muted);stroke-width:1}
+.fig .fl-ic{fill:var(--ic)}.fig .fl-ic~text{}
+.fig .fl-wr2{fill:var(--warn);opacity:.55}
+.fig .via circle{fill:var(--bg);stroke:var(--muted)}
+.fig rect.fl-ic + text, .fig rect.fl-ic + text + text{fill:var(--ic-ink)}
+
+.totop{display:inline-block;margin:8px 48px 32px;font-weight:600;color:var(--acc);text-decoration:none}
+@media (max-width:700px){.totop{margin:8px 18px 24px}}
+.foot{text-align:center;color:var(--muted);font-size:13px;padding:8px 16px 48px}
+main{min-width:0}.post-body{overflow-wrap:anywhere}
+
+.card.a3{border-top-color:var(--a3)}.card.a3 .card-go{color:#b39cff}
+.toc-group.a3 .toc-title{color:var(--a3)}.toc-group.a3 ol a.on{border-left-color:var(--a3)}
+.post.a3{--acc:var(--a3);--acc-soft:var(--a3-soft)}
+.fig .ta3{fill:var(--a3)}.fig .a3{stroke:var(--a3);stroke-width:1.8;fill:none}.fig .fl-a3{fill:var(--a3)}.fig .fl-tip{fill:var(--tip)}.fig .ttip{fill:var(--tip)}
+.post-body blockquote{margin:22px 0;padding:16px 20px;border-radius:14px;background:var(--warn-soft);border-left:5px solid var(--warn)}
+.post-body blockquote p{margin:0}
+.fig .fl-mu{fill:var(--muted)}.fig .fl-a2{fill:var(--a2)}.fig .tip{stroke:var(--tip);stroke-width:1.8;fill:none}
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"><div id="bar"></div></div>
+<header class="hero" id="top">
+  <div class="hero-grid" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <p class="kicker">Blog kỹ thuật phần cứng · Tuần 3 · 26/10/2026</p>
+    <h1>Ba bài tuần này: <em>đo ripple nguồn</em>, <em>mạch boost 5V→12V</em> và <em>sạc pin lithium</em></h1>
+    <p class="hero-sub">Một bài chỉ cách đo ripple bằng oscilloscope cho đúng thay vì tự tạo ra ringing, một bài tính tổn hao từng thành phần để chọn MOSFET cho mạch boost 24 W, và một bài về mạch sạc pin lithium một cell: dòng sạc, nhiệt và bảo vệ.</p>
+    <div class="cards"><a class="card a1" href="#a1"><span class="card-num">Bài 01 · Kiểm thử & gỡ lỗi phần cứng</span>
+<strong>Đo ripple nguồn bằng oscilloscope: probe, băng thông và dây mass quyết định kết quả</strong><span class="card-meta">Mức Cơ bản · 9 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a2" href="#a2"><span class="card-num">Bài 02 · Điện tử công suất</span>
+<strong>Chọn MOSFET và tính tổn hao cho mạch boost 5V→12V/2A từ A đến Z</strong><span class="card-meta">Mức Nâng cao · 11 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a3" href="#a3"><span class="card-num">Bài 03 · Thiết kế nguồn</span>
+<strong>Mạch sạc pin lithium 1 cell bằng IC sạc tuyến tính: dòng sạc, nhiệt và bảo vệ</strong><span class="card-meta">Mức Trung bình · 10 phút đọc</span><span class="card-go">Đọc bài →</span></a></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="toc" aria-label="Mục lục"><p class="toc-head">Mục lục</p><div class="toc-group a1"><a class="toc-title" href="#a1">Bài 01</a><ol><li><a href="#a1-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a1-ripple-thật-và-gai-nhọn-bạn-muốn-đo-cái-nào">Ripple thật và gai nhọn: bạn muốn đo cái nào?</a></li><li><a href="#a1-probe-x10-hay-x1-và-vì-sao-dây-mass-là-thủ-phạm-chính">Probe: x10 hay x1, và vì sao dây mass là thủ phạm chính</a></li><li><a href="#a1-băng-thông-để-mở-hay-giới-hạn-20-mhz">Băng thông: để mở hay giới hạn 20 MHz?</a></li><li><a href="#a1-thiết-lập-thang-đo-để-thấy-ripple">Thiết lập thang đo để thấy ripple</a></li><li><a href="#a1-cách-nối-dây-khác-cáp-đồng-trục-50-ω">Cách nối dây khác: cáp đồng trục 50 Ω</a></li><li><a href="#a1-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a1-cảnh-báo-an-toàn">Cảnh báo an toàn</a></li><li><a href="#a1-tổng-kết">Tổng kết</a></li><li><a href="#a1-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a1-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a2"><a class="toc-title" href="#a2">Bài 02</a><ol><li><a href="#a2-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a2-đầu-bài-và-dòng-đầu-vào">Đầu bài và dòng đầu vào</a></li><li><a href="#a2-tính-cuộn-cảm">Tính cuộn cảm</a></li><li><a href="#a2-chọn-mosfet-điện-áp-dòng-và-r_dson">Chọn MOSFET: điện áp, dòng và RDS(on)R_{DS(on)}</a></li><li><a href="#a2-các-thành-phần-tổn-hao-của-mosfet">Các thành phần tổn hao của MOSFET</a></li><li><a href="#a2-diode-schottky-hay-mosfet-đồng-bộ">Diode Schottky hay MOSFET đồng bộ?</a></li><li><a href="#a2-hiệu-suất-ước-tính-của-cả-mạch">Hiệu suất ước tính của cả mạch</a></li><li><a href="#a2-layout-và-an-toàn">Layout và an toàn</a></li><li><a href="#a2-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a2-tổng-kết">Tổng kết</a></li><li><a href="#a2-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a2-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a3"><a class="toc-title" href="#a3">Bài 03</a><ol><li><a href="#a3-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a3-quy-trình-sạc-cc-cv">Quy trình sạc CC-CV</a></li><li><a href="#a3-đặt-dòng-sạc-bằng-điện-trở">Đặt dòng sạc bằng điện trở</a></li><li><a href="#a3-tính-tổn-hao-nhiệt-ở-từng-giai-đoạn">Tính tổn hao nhiệt ở từng giai đoạn</a></li><li><a href="#a3-cảm-biến-nhiệt-độ-pin-ntc">Cảm biến nhiệt độ pin (NTC)</a></li><li><a href="#a3-chia-sẻ-tải-và-các-lớp-bảo-vệ">Chia sẻ tải và các lớp bảo vệ</a></li><li><a href="#a3-an-toàn-pin-lithium">An toàn pin lithium</a></li><li><a href="#a3-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a3-tổng-kết">Tổng kết</a></li><li><a href="#a3-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a3-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div></nav>
+  <main>
+<article id="a1" class="post a1">
+  <header class="post-head">
+    <div class="post-num">Bài 01</div>
+    <div class="chips"><span class="chip cat">Kiểm thử & gỡ lỗi phần cứng</span><span class="chip lvl">Mức Cơ bản</span><span class="chip">⏱ 9 phút đọc</span></div>
+    <h2 class="post-title">Đo ripple nguồn bằng oscilloscope: probe, băng thông và dây mass quyết định kết quả</h2>
+    <p class="lede">Cách đo ripple nguồn đóng cắt bằng oscilloscope cho đúng: chọn probe x10, giới hạn băng thông 20 MHz, bỏ dây mass dài, kèm ví dụ tính về ringing và nhiễu.</p>
+    <ul class="tags"><li>#oscilloscope</li><li>#đo ripple</li><li>#probe</li><li>#băng thông</li><li>#dây mass</li><li>#nguồn đóng cắt</li></ul>
+  </header>
+  <div class="post-body"><p>Cùng một nguồn 5 V, cùng một oscilloscope, hai kỹ sư đo cho ra hai kết quả khác hẳn nhau: người thứ nhất thấy ripple 30 mV rất êm, người thứ hai thấy một rừng gai nhọn lên tới 300 mV và kết luận nguồn hỏng. Phần lớn lần như vậy, nguồn không có lỗi. Lỗi nằm ở cách đo: dây mass quá dài, băng thông để mở hết, hoặc probe đặt sai chế độ. Bài này giải thích ba yếu tố đó bằng số liệu cụ thể, rồi đưa ra quy trình đo ripple lặp lại được và đáng tin cậy.</p><div class="stats"><div class="stat"><b>118,6 MHz</b><span>ringing giả với dây mass 150 nH và probe 12 pF</span></div><div class="stat"><b>459 MHz</b><span>với spring tip 10 nH: ngoài băng thông máy đo</span></div><div class="stat"><b>× 3,16</b><span>nhiễu tăng khi mở băng thông từ 20 lên 200 MHz</span></div><div class="stat"><b>0,625 mV</b><span>một mức ADC ở 20 mV/div, thay vì 15,6 mV ở 500 mV/div</span></div></div>
+<section id="a1-kiến-thức-nền-cần-có" class="level2 basics">
+<h2>Kiến thức nền cần có</h2>
+<ul>
+<li><strong>Ripple</strong> (độ gợn) là thành phần điện áp xoay chiều nhỏ chồng lên điện áp một chiều ở đầu ra nguồn, thường cùng tần số đóng cắt và hài của nó. Nó khác với <strong>noise</strong> (nhiễu), vốn ngẫu nhiên hoặc ghép từ các tín hiệu khác. Nguồn đóng cắt còn có các gai nhọn (spike) ở thời điểm chuyển mạch, tần số rất cao.</li>
+<li><strong>Băng thông</strong> (bandwidth) của oscilloscope là tần số tại đó biên độ đo giảm còn khoảng 70% (−3 dB). Thời gian lên (rise time) và băng thông liên hệ gần đúng: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mi>r</mi></msub><mo>≈</mo><mn>0,35</mn><mi>/</mi><mi>B</mi><mi>W</mi></mrow><annotation encoding="application/x-tex">t_r \approx 0{,}35 / BW</annotation></semantics></math>.</li>
+<li>Điện cảm: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mi>L</mi><mo>×</mo><mi>d</mi><mi>i</mi><mi>/</mi><mi>d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">V = L \times di/dt</annotation></semantics></math>. Mọi đoạn dây đều có điện cảm ký sinh, khoảng 1 nH cho mỗi mm dây (ước lượng thô).</li>
+</ul>
+</section>
+<section id="a1-ripple-thật-và-gai-nhọn-bạn-muốn-đo-cái-nào" class="level2 ">
+<h2>1. Ripple thật và gai nhọn: bạn muốn đo cái nào?</h2>
+<p>Trước khi nối probe, cần xác định rõ mục tiêu đo, vì hai thứ này cần cách đo khác nhau:</p>
+<ul>
+<li><strong>Ripple ở tần số đóng cắt</strong> (ví dụ 500 kHz): quyết định mạch phía sau có chạy ổn hay không, ví dụ ADC, cảm biến, bộ khuếch đại. Thường đo với giới hạn băng thông 20 MHz để loại nhiễu tần số cao ngoài vùng quan tâm.</li>
+<li><strong>Gai nhọn đóng cắt</strong> (cạnh vài ns, ringing hàng trăm MHz): liên quan EMI và độ bền linh kiện. Cần băng thông rộng hơn, và cần que đo được nối sát nhất có thể. Đây là phép đo khác.</li>
+</ul>
+<p>Quy ước trong bài: ripple nguồn 5 V, độ gợn 30 mV đỉnh-đỉnh nghĩa là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>30</mn><mi>/</mi><mn>5000</mn><mo>=</mo><mn>0,6</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">30/5000 = 0{,}6\%</annotation></semantics></math> điện áp ra, một giá trị thường gặp ở buck cho tải số.</p>
+<figure class="fig"><svg viewBox="0 0 760 300" role="img" aria-label="Dạng sóng điện áp ra nguồn 5 V: ripple tam giác 30 mV và các gai nhọn ở cạnh chuyển mạch" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="90" y1="270" x2="720" y2="270" class="ln" marker-end="url(#arr)"/><line x1="90" y1="270" x2="90" y2="20" class="ln" marker-end="url(#arr)"/><text x="720" y="290" class="tm" text-anchor="end">t</text><text x="98" y="24" class="tm"></text><line x1="90" y1="160" x2="660" y2="160" class="mu dash"/><text x="84" y="164" class="tx b" text-anchor="end">5 V</text><path d="M90,174 L91.8,174 L94.5,98 L98.0,212 L101.6,136 L105.2,190 L108.8,164 L113.2,174 L161.4,146 L164.1,120 L167.7,168 L171.2,136 L175.7,146 L190.0,174 L191.8,174 L194.5,98 L198.0,212 L201.6,136 L205.2,190 L208.8,164 L213.2,174 L261.4,146 L264.1,120 L267.7,168 L271.2,136 L275.7,146 L290.0,174 L291.8,174 L294.5,98 L298.0,212 L301.6,136 L305.2,190 L308.8,164 L313.2,174 L361.4,146 L364.1,120 L367.7,168 L371.2,136 L375.7,146 L390.0,174 L391.8,174 L394.5,98 L398.0,212 L401.6,136 L405.2,190 L408.8,164 L413.2,174 L461.4,146 L464.1,120 L467.7,168 L471.2,136 L475.7,146 L490.0,174 L491.8,174 L494.5,98 L498.0,212 L501.6,136 L505.2,190 L508.8,164 L513.2,174 L561.4,146 L564.1,120 L567.7,168 L571.2,136 L575.7,146 L590.0,174" class="a1 thick" fill="none"/><line x1="600" y1="146" x2="636" y2="146" class="mu"/><line x1="600" y1="174" x2="636" y2="174" class="mu"/><line x1="628" y1="146" x2="628" y2="174" class="ln" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="640" y="156" class="ta1 b">ripple</text><text x="640" y="172" class="ta1 b">30 mV</text><text x="640" y="190" class="ta1">(0,6% của 5 V)</text><text x="116" y="64" class="twr b">gai nhọn ở cạnh chuyển mạch</text><text x="116" y="80" class="twr">(vài ns, ringing hàng trăm MHz)</text><line x1="140" y1="86" x2="98" y2="108" class="wr"/><text x="150" y="238" class="tm">chu kỳ đóng cắt 2 µs (500 kHz)</text><line x1="90" y1="248" x2="190" y2="248" class="ln" marker-start="url(#arr)" marker-end="url(#arr)"/></svg><figcaption>Hình 1. Điện áp ra nguồn 5 V: ripple tam giác 30 mV ở tần số đóng cắt, chồng lên là các gai nhọn ở cạnh chuyển mạch. Hai thứ này cần hai cách đo khác nhau.</figcaption></figure>
+</section>
+<section id="a1-probe-x10-hay-x1-và-vì-sao-dây-mass-là-thủ-phạm-chính" class="level2 ">
+<h2>2. Probe: x10 hay x1, và vì sao dây mass là thủ phạm chính</h2>
+<section id="a1-probe-x10-so-với-x1" class="level3">
+<h3>Probe x10 so với x1</h3>
+<p>Hầu hết probe thụ động có công tắc x1/x10:</p>
+<ul>
+<li><strong>x10</strong>: điện trở đầu vào khoảng 10 MΩ, điện dung khoảng 10 đến 15 pF, băng thông tới vài trăm MHz. Tín hiệu bị chia 10 nên cần chỉnh thang đo của oscilloscope theo.</li>
+<li><strong>x1</strong>: điện trở khoảng 1 MΩ, điện dung khoảng 100 pF hoặc hơn, băng thông chỉ cỡ vài MHz. Nhạy hơn, nhưng làm tải mạch nhiều hơn và cắt mất các thành phần nhanh.</li>
+</ul>
+<p>Ở 500 kHz, trở kháng của tụ đầu vào là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Z</mi><mo>=</mo><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>π</mi><mi>f</mi><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Z = 1/(2\pi f C)</annotation></semantics></math>. Với probe x10 (12 pF): khoảng 26,5 kΩ. Với probe x1 (100 pF): khoảng 3,2 kΩ. Đo trên nút có trở kháng cao thì probe x1 làm mạch lệch rõ rệt; trên đầu ra nguồn trở kháng thấp thì khác biệt này ít quan trọng, nhưng băng thông của probe x1 vẫn làm méo cạnh nhanh. Vì vậy, nên dùng x10 làm mặc định, và kiểm tra công tắc probe khớp với cài đặt kênh trên oscilloscope (nhầm là gây sai biên độ gấp 10 lần).</p>
+</section>
+<section id="a1-dây-mass-mạch-cộng-hưởng-bạn-tự-tạo-ra" class="level3">
+<h3>Dây mass: mạch cộng hưởng bạn tự tạo ra</h3>
+<p>Probe có dây mass dài, kẹp cá sấu, tạo thành một cuộn cảm nối tiếp với điện dung đầu probe. Dây dài 15 cm có điện cảm khoảng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>150</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nH</mtext></mrow><annotation encoding="application/x-tex">150\ \text{nH}</annotation></semantics></math> (1 nH/mm). Cùng với điện dung đầu probe 12 pF, mạch này cộng hưởng ở:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mn>0</mn></msub><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><msqrt><mrow><mi>L</mi><mi>C</mi></mrow></msqrt></mrow></mfrac><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><msqrt><mrow><mn>150</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>12</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>12</mn></mrow></msup></mrow></msqrt></mrow></mfrac><mo>≈</mo><mn>118,6</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">MHz</mtext></mrow><annotation encoding="application/x-tex">f_0 = \frac{1}{2\pi\sqrt{LC}} = \frac{1}{2\pi\sqrt{150\times10^{-9}\times12\times10^{-12}}} \approx 118{,}6\ \text{MHz}</annotation></semantics></math></p>
+<p>Cạnh chuyển mạch của nguồn kích thích mạch cộng hưởng này, và trên màn hình xuất hiện ringing quanh 100 MHz mà thực tế không tồn tại trong mạch. Với đầu nối ngắn kiểu spring tip (lò xo bọc đầu probe, dài cỡ 1 cm, khoảng 10 nH):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mn>0</mn></msub><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><msqrt><mrow><mn>10</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>12</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>12</mn></mrow></msup></mrow></msqrt></mrow></mfrac><mo>≈</mo><mn>459</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">MHz</mtext></mrow><annotation encoding="application/x-tex">f_0 = \frac{1}{2\pi\sqrt{10\times10^{-9}\times12\times10^{-12}}} \approx 459\ \text{MHz}</annotation></semantics></math></p>
+<p>Tần số này vượt băng thông của oscilloscope 100 MHz, nên ringing hầu như biến mất. Điện cảm giảm 15 lần, tần số cộng hưởng tăng khoảng 3,9 lần.</p>
+<figure class="fig"><svg viewBox="0 0 760 310" role="img" aria-label="So sánh đo bằng dây mass dài và bằng spring tip" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="180" y="22" class="tx b" text-anchor="middle">Dây mass dài, kẹp cá sấu</text><rect x="10" y="230" width="340" height="40" rx="6" class="fl-pcb"/><rect x="150" y="228" width="60" height="22" rx="3" class="fl-part"/><text x="180" y="244" class="tx b" text-anchor="middle">C<tspan class="sub">OUT</tspan></text><line x1="170" y1="228" x2="170" y2="110" class="ln thick"/><rect x="156" y="52" width="28" height="64" rx="8" class="ln fl-bg"/><text x="170" y="40" class="tx b" text-anchor="middle">probe</text><path d="M156,96 L90,96 L90,62 L40,62 L40,232" class="wr thick" fill="none"/><rect x="28" y="226" width="24" height="12" rx="3" class="fl-wr"/><path d="M170,226 L170,96 L90,96 L90,62 L40,62 L40,226 Z" class="fl-wr2" style="opacity:.14;stroke:none"/><text x="200" y="140" class="twr b">vòng diện tích lớn</text><text x="200" y="158" class="twr">L ≈ 150 nH</text><text x="180" y="296" class="twr b" text-anchor="middle">f₀ = 1/(2π√LC) ≈ 119 MHz → ringing giả</text><line x1="380" y1="14" x2="380" y2="300" class="grid"/><text x="570" y="22" class="tx b" text-anchor="middle">Spring tip, chạm sát GND</text><rect x="400" y="230" width="340" height="40" rx="6" class="fl-pcb"/><rect x="540" y="228" width="60" height="22" rx="3" class="fl-part"/><text x="570" y="244" class="tx b" text-anchor="middle">C<tspan class="sub">OUT</tspan></text><line x1="560" y1="228" x2="560" y2="110" class="ln thick"/><rect x="546" y="52" width="28" height="64" rx="8" class="ln fl-bg"/><text x="560" y="40" class="tx b" text-anchor="middle">probe</text><path d="M574,96 L586,96 L586,226" class="a1 thick" fill="none"/><rect x="578" y="226" width="16" height="12" rx="3" class="fl-a1"/><path d="M560,226 L560,96 L586,96 L586,226 Z" class="fl-a1" style="opacity:.25;stroke:none"/><text x="600" y="150" class="ta1 b">vòng nhỏ</text><text x="600" y="168" class="ta1">L ≈ 10 nH</text><text x="570" y="296" class="ta1 b" text-anchor="middle">f₀ ≈ 459 MHz, ngoài băng thông máy đo</text></svg><figcaption>Hình 2. Dây mass dài tạo vòng điện cảm khoảng 150 nH, cộng hưởng với điện dung đầu probe ở khoảng 119 MHz; spring tip ngắn (khoảng 10 nH) đẩy tần số lên khoảng 459 MHz.</figcaption></figure>
+<p>Một mẹo thực tế: đo ngay tại chân tụ ra (hoặc điểm cần đo) và chân GND gần nó nhất. Nếu mạch không có điểm test, hàn một cặp chân kim loại hoặc dùng một đoạn dây đồng trần quấn sát chân probe để làm điểm mass ngắn.</p>
+</section>
+</section>
+<section id="a1-băng-thông-để-mở-hay-giới-hạn-20-mhz" class="level2 ">
+<h2>3. Băng thông: để mở hay giới hạn 20 MHz?</h2>
+<p>Noise tổng của phép đo tỉ lệ với căn bậc hai của băng thông (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mi>n</mi></msub><mo>∝</mo><msqrt><mrow><mi>B</mi><mi>W</mi></mrow></msqrt></mrow><annotation encoding="application/x-tex">V_n \propto \sqrt{BW}</annotation></semantics></math>). Nếu oscilloscope đo được nhiễu 0,5 mV rms ở băng thông 20 MHz (giá trị giả định minh họa), thì ở 200 MHz:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mi>n</mi></msub><mo>=</mo><mn>0,5</mn><mo>×</mo><msqrt><mrow><mn>200</mn><mi>/</mi><mn>20</mn></mrow></msqrt><mo>≈</mo><mn>1,58</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV rms</mtext></mrow><annotation encoding="application/x-tex">V_n = 0{,}5 \times \sqrt{200/20} \approx 1{,}58\ \text{mV rms}</annotation></semantics></math></p>
+<p>Giá trị đỉnh-đỉnh gần đúng khoảng 6 lần rms, tức khoảng 3 mV ở 20 MHz và gần 9,5 mV ở 200 MHz. Bạn nhìn thấy thêm gần 6,5 mV nhiễu chỉ vì mở băng thông, trong khi mạch phía sau thường không thể đáp ứng tới các tần số đó.</p>
+<p>Do đó:</p>
+<ul>
+<li>Đo ripple ở tần số đóng cắt: bật giới hạn băng thông 20 MHz (nút BW limit trên oscilloscope hoặc trên kênh).</li>
+<li>Đo gai nhọn: để băng thông rộng, nhưng chuẩn bị tinh thần rằng cạnh bạn thấy bị làm chậm bởi chính oscilloscope. Cạnh 5 ns cần băng thông khoảng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,35</mn><mi>/</mi><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">ns</mtext><mo>=</mo><mn>70</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">MHz</mtext></mrow><annotation encoding="application/x-tex">0{,}35/5\ \text{ns} = 70\ \text{MHz}</annotation></semantics></math> để thấy gần đúng; cạnh nhanh hơn thì cần hơn nữa. Với oscilloscope 100 MHz và probe 200 MHz, thời gian lên của hệ thống là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mrow><mn>3</mn><mo>,</mo><msup><mn>5</mn><mn>2</mn></msup><mo>+</mo><mn>1</mn><mo>,</mo><msup><mn>75</mn><mn>2</mn></msup></mrow></msqrt><mo>≈</mo><mn>3,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">ns</mtext></mrow><annotation encoding="application/x-tex">\sqrt{3{,}5^2+1{,}75^2} \approx 3{,}9\ \text{ns}</annotation></semantics></math> (tương đương băng thông khoảng 89 MHz).</li>
+<li>Tốc độ lấy mẫu: nên có tối thiểu 5 lần băng thông để tái tạo dạng sóng. Giới hạn 20 MHz cần ít nhất 100 MSa/s.</li>
+</ul>
+</section>
+<section id="a1-thiết-lập-thang-đo-để-thấy-ripple" class="level2 ">
+<h2>4. Thiết lập thang đo để thấy ripple</h2>
+<p>Ripple chỉ vài chục mV chồng trên 5 V DC. Nếu để thang 1 V/div, ripple chiếm chưa tới 0,03 ô vuông và bạn chỉ thấy một đường thẳng. Cách làm:</p>
+<ol type="1">
+<li>Bật <strong>ghép AC</strong> (AC coupling) trên kênh để loại thành phần DC, rồi hạ thang xuống 10 đến 20 mV/div.</li>
+<li>Hoặc dùng ghép DC kèm <strong>offset</strong> (dịch điểm 0): đặt offset gần bằng điện áp ra (ví dụ 5 V) để nhìn phần dao động ở thang nhạy mà không bị hạn chế bởi ghép AC (ghép AC có tần số cắt thấp, có thể làm méo ripple tần số thấp).</li>
+<li>Đặt trigger ở cạnh của tín hiệu tần số đóng cắt, ví dụ trigger vào nút SW ở kênh khác để hình ổn định.</li>
+</ol>
+<p>Về độ phân giải: oscilloscope 8 bit chia dải đo thành 256 mức. Ở 20 mV/div với 8 ô dọc (160 mV toàn thang), mỗi mức là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>160</mn><mi>/</mi><mn>256</mn><mo>=</mo><mn>0,625</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">160/256 = 0{,}625\ \text{mV}</annotation></semantics></math>, nên ripple 30 mV chiếm khoảng 48 mức, đủ rõ. Nếu để 500 mV/div (toàn thang 4 V), mỗi mức là 15,6 mV và ripple chỉ chiếm khoảng 2 mức, gần như không đọc được.</p>
+<figure class="fig"><svg viewBox="0 0 760 320" role="img" aria-label="So sánh thang đo 500 mV/div ghép DC và 20 mV/div ghép AC" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="180" y="22" class="tx b" text-anchor="middle">500 mV/div, ghép DC</text><rect x="30" y="36" width="300" height="240" rx="6" class="ln fl-bg"/><line x1="60" y1="36" x2="60" y2="276" class="grid"/><line x1="90" y1="36" x2="90" y2="276" class="grid"/><line x1="120" y1="36" x2="120" y2="276" class="grid"/><line x1="150" y1="36" x2="150" y2="276" class="grid"/><line x1="180" y1="36" x2="180" y2="276" class="grid"/><line x1="210" y1="36" x2="210" y2="276" class="grid"/><line x1="240" y1="36" x2="240" y2="276" class="grid"/><line x1="270" y1="36" x2="270" y2="276" class="grid"/><line x1="300" y1="36" x2="300" y2="276" class="grid"/><line x1="30" y1="66" x2="330" y2="66" class="grid"/><line x1="30" y1="96" x2="330" y2="96" class="grid"/><line x1="30" y1="126" x2="330" y2="126" class="grid"/><line x1="30" y1="156" x2="330" y2="156" class="grid"/><line x1="30" y1="186" x2="330" y2="186" class="grid"/><line x1="30" y1="216" x2="330" y2="216" class="grid"/><line x1="30" y1="246" x2="330" y2="246" class="grid"/><path d="M30,156 L40,155.5 L60,156.5 L70,155.5 L90,156.5 L100,155.5 L120,156.5 L130,155.5 L150,156.5 L160,155.5 L180,156.5 L190,155.5 L210,156.5 L220,155.5 L240,156.5 L250,155.5 L270,156.5 L280,155.5 L300,156.5 L310,155.5 L330,156.5" class="wr thick" fill="none"/><text x="180" y="130" class="twr b" text-anchor="middle">gần như một vạch phẳng</text><text x="180" y="300" class="twr b" text-anchor="middle">ripple 30 mV chiếm ≈ 2 mức ADC</text><line x1="380" y1="14" x2="380" y2="310" class="grid"/><text x="580" y="22" class="tx b" text-anchor="middle">20 mV/div, ghép AC</text><rect x="430" y="36" width="300" height="240" rx="6" class="ln fl-bg"/><line x1="460" y1="36" x2="460" y2="276" class="grid"/><line x1="490" y1="36" x2="490" y2="276" class="grid"/><line x1="520" y1="36" x2="520" y2="276" class="grid"/><line x1="550" y1="36" x2="550" y2="276" class="grid"/><line x1="580" y1="36" x2="580" y2="276" class="grid"/><line x1="610" y1="36" x2="610" y2="276" class="grid"/><line x1="640" y1="36" x2="640" y2="276" class="grid"/><line x1="670" y1="36" x2="670" y2="276" class="grid"/><line x1="700" y1="36" x2="700" y2="276" class="grid"/><line x1="430" y1="66" x2="730" y2="66" class="grid"/><line x1="430" y1="96" x2="730" y2="96" class="grid"/><line x1="430" y1="126" x2="730" y2="126" class="grid"/><line x1="430" y1="156" x2="730" y2="156" class="grid"/><line x1="430" y1="186" x2="730" y2="186" class="grid"/><line x1="430" y1="216" x2="730" y2="216" class="grid"/><line x1="430" y1="246" x2="730" y2="246" class="grid"/><path d="M430,178 L466,133 L490,178 L526,133 L550,178 L586,133 L610,178 L646,133 L670,178 L706,133 L730,178" class="ta1 a1 thick" fill="none"/><text x="580" y="70" class="ta1 b" text-anchor="middle">thấy rõ ripple tam giác</text><text x="580" y="300" class="ta1 b" text-anchor="middle">ripple 30 mV chiếm ≈ 48 mức ADC</text></svg><figcaption>Hình 3. Cùng một ripple 30 mV: ở 500 mV/div ghép DC gần như không thấy, ở 20 mV/div ghép AC chiếm khoảng 48 mức của ADC 8 bit.</figcaption></figure>
+</section>
+<section id="a1-cách-nối-dây-khác-cáp-đồng-trục-50-ω" class="level2 ">
+<h2>5. Cách nối dây khác: cáp đồng trục 50 Ω</h2>
+<p>Với nguồn rất êm (ripple vài mV), người ta có thể đo bằng cáp đồng trục 50 Ω nối thẳng vào oscilloscope, đặt đầu vào ở chế độ 50 Ω, và nối qua một tụ chặn DC. Cách này cho độ nhiễu thấp và không có điện dung probe nối vào mạch. Điểm cần nhớ:</p>
+<ul>
+<li>Tụ chặn DC cùng điện trở 50 Ω tạo bộ lọc thông cao với tần số cắt <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mi>c</mi></msub><mo>=</mo><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>π</mi><mo>×</mo><mn>50</mn><mo>×</mo><mi>C</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f_c = 1/(2\pi \times 50 \times C)</annotation></semantics></math>. Với 10 µF: khoảng 318 Hz; với 1 µF: khoảng 3,2 kHz. Chọn đủ lớn để không cắt cụt ripple tần số thấp.</li>
+<li>Điện áp DC tối đa của đầu vào 50 Ω thường rất thấp (cỡ 5 V rms), nên bắt buộc có tụ chặn DC, và phải kiểm tra thông số đầu vào của oscilloscope trước khi nối.</li>
+<li>Nếu quên tụ chặn DC, 5 V đặt thẳng lên điện trở 50 Ω của đầu vào sẽ kéo dòng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>50</mn><mo>=</mo><mn>100</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mA</mtext></mrow><annotation encoding="application/x-tex">5/50 = 100\ \text{mA}</annotation></semantics></math> từ nguồn và có thể làm hỏng đầu vào oscilloscope.</li>
+</ul>
+</section>
+<section id="a1-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
+<h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
+<ul>
+<li>Dùng dây mass kẹp cá sấu dài để đo nguồn đóng cắt, rồi kết luận nguồn có gai nhiễu 100 MHz.</li>
+<li>Quên chuyển công tắc probe x10 và cài đặt kênh cho khớp, biên độ đo sai gấp 10 lần.</li>
+<li>Để băng thông mở hết khi chỉ cần đo ripple ở tần số đóng cắt, thấy nhiễu “nhiều” hơn thực tế.</li>
+<li>Đo ở điểm xa tụ ra (ví dụ ở đầu connector cuối cáp dài) rồi gán lỗi cho layout nguồn.</li>
+<li>Để thang 500 mV/div hoặc 1 V/div với ghép DC và không thấy ripple, kết luận “nguồn rất sạch”.</li>
+<li>Đo trên một nút có tải đang chạy firmware thay đổi liên tục, không cố định tải, nên mỗi lần đo ra một kiểu.</li>
+<li>Nối kẹp mass của probe vào một điểm không phải GND (ví dụ nút SW hoặc 12 V), gây chập qua dây mass của oscilloscope.</li>
+<li>Nhiều probe cùng chạm một nút, tạo vòng đất giữa các kênh, nhiễu cộng thêm.</li>
+</ul>
+</section>
+<section id="a1-cảnh-báo-an-toàn" class="level2 ">
+<h2>Cảnh báo an toàn</h2>
+<p>Dây mass của đầu probe nối thẳng với vỏ và chân đất (PE) của oscilloscope. Khi đo mạch có điện lưới (AC) hoặc nối với nguồn có chân đất khác điện thế, kẹp mass có thể gây chập và nguy hiểm. Không bao giờ tháo chân đất (PE) của oscilloscope để “nổi” thiết bị. Dùng biến áp cách ly hoặc probe vi sai (differential probe) được thiết kế cho mục đích đó. Với nguồn điện áp thấp như 5 V đến 12 V trong bài, vẫn cần chắc chắn kẹp mass nối đúng GND của mạch trước khi bật nguồn.</p>
+</section>
+<section id="a1-tổng-kết" class="level2 summary">
+<h2>Tổng kết</h2>
+<ul>
+<li>Ripple thật và gai nhọn đóng cắt là hai phép đo khác nhau; chọn cách đo theo mục tiêu.</li>
+<li>Dùng probe x10, kiểm tra công tắc khớp với cài đặt kênh.</li>
+<li>Bỏ dây mass dài: 150 nH tạo cộng hưởng khoảng 119 MHz với probe 12 pF, trong khi spring tip 10 nH đẩy tần số lên khoảng 459 MHz.</li>
+<li>Giới hạn băng thông 20 MHz khi đo ripple ở tần số đóng cắt; nhiễu giảm theo căn bậc hai băng thông.</li>
+<li>Chọn thang 10 đến 20 mV/div với AC coupling hoặc offset để thấy đủ chi tiết.</li>
+</ul>
+</section>
+<section id="a1-gợi-ý-đọc-tiếp" class="level2 next">
+<h2>Gợi ý đọc tiếp</h2>
+<ul>
+<li>Layout mạch buck: hot loop, nút SW và đường hồi tiếp (bài tuần trước), để hiểu gai nhọn đến từ đâu.</li>
+<li>Chọn tụ ra và tính ESR để giảm ripple điện áp.</li>
+<li>Dùng probe dòng và probe vi sai để đo dòng đóng cắt và điện áp nổi.</li>
+</ul>
+</section>
+<section id="a1-nguồn-tham-khảo" class="level2 refs">
+<h2>Nguồn tham khảo</h2>
+<ul>
+<li>Tài liệu hướng dẫn đo nguồn của các hãng oscilloscope và probe (ví dụ ghi chú ứng dụng về “power supply measurement” của Tektronix, Keysight, Rohde &amp; Schwarz): cần kiểm tra lại mã tài liệu và phiên bản mới nhất.</li>
+<li>Ghi chú ứng dụng của các hãng IC nguồn (Texas Instruments, Analog Devices) về cách đo ripple và nhiễu đầu ra bằng spring tip hoặc cáp đồng trục.</li>
+</ul>
+</section>
+</div>
+  <a class="totop" href="#top">↑ Về đầu trang</a>
+</article>
+<article id="a2" class="post a2">
+  <header class="post-head">
+    <div class="post-num">Bài 02</div>
+    <div class="chips"><span class="chip cat">Điện tử công suất</span><span class="chip lvl">Mức Nâng cao</span><span class="chip">⏱ 11 phút đọc</span></div>
+    <h2 class="post-title">Chọn MOSFET và tính tổn hao cho mạch boost 5V→12V/2A từ A đến Z</h2>
+    <p class="lede">Tính toán mạch boost 5V→12V/2A: dòng đầu vào, cuộn cảm, chọn MOSFET, tổn hao dẫn, đóng cắt, cổng, diode Schottky và hiệu suất, kèm ví dụ số cụ thể từng bước.</p>
+    <ul class="tags"><li>#boost converter</li><li>#MOSFET</li><li>#tổn hao đóng cắt</li><li>#Schottky</li><li>#cuộn cảm</li><li>#hiệu suất</li></ul>
+  </header>
+  <div class="post-body"><p>Mạch boost tăng áp (từ 5 V lên 12 V) trông đơn giản: một cuộn cảm, một MOSFET, một diode, một tụ. Nhưng khi tải là 2 A ở 12 V, tức 24 W, dòng đầu vào lên tới hơn 5 A, và mọi quyết định chọn linh kiện đều nhân thêm tổn hao. Chọn MOSFET sai nghĩa là nhiệt tăng, hiệu suất tụt, đôi khi mạch cháy ngay lần chạy đầu. Bài này đi qua toàn bộ chuỗi tính: dòng đầu vào, cuộn cảm, các thành phần tổn hao của MOSFET và diode, rồi chốt hiệu suất ước tính của cả mạch.</p><div class="stats"><div class="stat"><b>5,22 A</b><span>dòng vào trung bình của boost 5 V → 12 V/2 A</span></div><div class="stat"><b>4,7 µH</b><span>điện cảm chọn, ripple 2,07 A, đỉnh 6,25 A</span></div><div class="stat"><b>0,40 W</b><span>tổng tổn hao MOSFET (dẫn, đóng cắt, cổng, C<sub>OSS</sub>)</span></div><div class="stat"><b>≈ 93,4 %</b><span>hiệu suất ước tính, tổn hao tổng 1,71 W</span></div></div>
+<section id="a2-kiến-thức-nền-cần-có" class="level2 basics">
+<h2>Kiến thức nền cần có</h2>
+<ul>
+<li><strong>Mạch boost</strong>: khi MOSFET bật, dòng cuộn cảm tăng; khi MOSFET tắt, dòng cuộn cảm đẩy qua diode ra tải và tụ ra. Điện áp ra luôn lớn hơn điện áp vào. Tỉ lệ làm việc lý tưởng: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>1</mn><mo>−</mo><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mi>/</mi><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub></mrow><annotation encoding="application/x-tex">D = 1 - V_{IN}/V_{OUT}</annotation></semantics></math>.</li>
+<li>Dòng qua cuộn cảm chính là dòng đầu vào (liên tục ở chế độ CCM). Dòng qua diode chỉ có trong khoảng thời gian MOSFET tắt.</li>
+<li>Đã có kiến thức MOSFET cơ bản: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Q</mi><mi>g</mi></msub><annotation encoding="application/x-tex">Q_g</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Q</mi><mrow><mi>g</mi><mi>d</mi></mrow></msub><annotation encoding="application/x-tex">Q_{gd}</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">C_{OSS}</annotation></semantics></math>. Nếu chưa, xem bài “Giải mã datasheet MOSFET: 6 thông số quyết định bạn chọn đúng hay sai” ở tuần 1.</li>
+</ul>
+</section>
+<section id="a2-đầu-bài-và-dòng-đầu-vào" class="level2 ">
+<h2>1. Đầu bài và dòng đầu vào</h2>
+<p>Thông số giả định cho ví dụ:</p>
+<ul>
+<li>Điện áp vào <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>=</mo><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{IN} = 5\ \text{V}</annotation></semantics></math> (cổng USB hoặc pin), điện áp ra <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>=</mo><mn>12</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{OUT} = 12\ \text{V}</annotation></semantics></math>, dòng ra <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>=</mo><mn>2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">I_{OUT} = 2\ \text{A}</annotation></semantics></math>.</li>
+<li>Tần số đóng cắt <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>=</mo><mn>300</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">kHz</mtext></mrow><annotation encoding="application/x-tex">f_{sw} = 300\ \text{kHz}</annotation></semantics></math>, hiệu suất giả định ban đầu <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mn>92</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">\eta = 92\%</annotation></semantics></math>.</li>
+</ul>
+<p>Công suất ra và công suất vào:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>=</mo><mn>12</mn><mo>×</mo><mn>2</mn><mo>=</mo><mn>24</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>P</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>=</mo><mfrac><mn>24</mn><mrow><mn>0,92</mn></mrow></mfrac><mo>≈</mo><mn>26,09</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{OUT} = 12 \times 2 = 24\ \text{W}, \qquad P_{IN} = \frac{24}{0{,}92} \approx 26{,}09\ \text{W}</annotation></semantics></math></p>
+<p>Dòng đầu vào trung bình:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>=</mo><mfrac><msub><mi>P</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub></mfrac><mo>=</mo><mfrac><mrow><mn>26,09</mn></mrow><mn>5</mn></mfrac><mo>≈</mo><mn>5,22</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">I_{IN} = \frac{P_{IN}}{V_{IN}} = \frac{26{,}09}{5} \approx 5{,}22\ \text{A}</annotation></semantics></math></p>
+<p>Đây là điểm khác lớn so với buck: dòng vào gấp gần 2,6 lần dòng ra. Mọi thành phần mang dòng này (đầu nối, đường mạch, cuộn cảm, MOSFET) phải chịu 5,2 A trung bình, và còn cao hơn ở đỉnh.</p>
+<p>Tỉ lệ làm việc lý tưởng:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>1</mn><mo>−</mo><mfrac><mn>5</mn><mn>12</mn></mfrac><mo>≈</mo><mn>0,583</mn></mrow><annotation encoding="application/x-tex">D = 1 - \frac{5}{12} \approx 0{,}583</annotation></semantics></math></p>
+<p>(nếu tính cả hiệu suất thì <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>≈</mo><mn>1</mn><mo>−</mo><mn>0,92</mn><mo>×</mo><mn>5</mn><mi>/</mi><mn>12</mn><mo>≈</mo><mn>0,617</mn></mrow><annotation encoding="application/x-tex">D \approx 1 - 0{,}92 \times 5/12 \approx 0{,}617</annotation></semantics></math>; bài dùng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mn>0,583</mn></mrow><annotation encoding="application/x-tex">D = 0{,}583</annotation></semantics></math> cho công thức cuộn cảm.)</p>
+<figure class="fig"><svg viewBox="0 0 760 340" role="img" aria-label="Sơ đồ mạch boost 5V→12V/2A: cuộn cảm, MOSFET, diode Schottky và tụ ra" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="20" y="125" class="tx b">V<tspan class="sub">IN</tspan> 5 V</text><line x1="86" y1="120" x2="130" y2="120" class="ln"/><path d="M130,120 C130.0,104 155.0,104 155.0,120 C155.0,104 180.0,104 180.0,120 C180.0,104 205.0,104 205.0,120 C205.0,104 230.0,104 230.0,120" class="ln thick" fill="none"/><line x1="230" y1="120" x2="290" y2="120" class="ln"/><text x="180" y="94" class="tx b" text-anchor="middle">L = 4,7 µH</text><circle cx="290" cy="120" r="4" class="fl-ink"/><text x="276" y="108" class="twr b" text-anchor="end">SW</text><line x1="290" y1="120" x2="290" y2="154" class="ln"/><rect x="262" y="154" width="56" height="64" rx="8" class="a2 fl-bg"/><text x="290" y="192" class="ta2 b" text-anchor="middle">Q1</text><line x1="290" y1="218" x2="290" y2="260" class="ln"/><line x1="276" y1="260" x2="304" y2="260" class="ln thick"/><line x1="281" y1="266" x2="299" y2="266" class="ln"/><line x1="286" y1="272" x2="294" y2="272" class="ln"/><line x1="262" y1="186" x2="234" y2="186" class="ln"/><text x="228" y="190" class="tm" text-anchor="end">gate</text><line x1="290" y1="120" x2="360" y2="120" class="ln"/><polygon points="368,112 368,128 382,120" class="fl-ink"/><line x1="382" y1="111" x2="382" y2="129" class="ln"/><line x1="382" y1="120" x2="470" y2="120" class="ln"/><text x="375" y="100" class="tx b" text-anchor="middle">D1 Schottky</text><circle cx="470" cy="120" r="4" class="fl-ink"/><line x1="470" y1="120" x2="470" y2="154" class="ln"/><line x1="470" y1="154" x2="470" y2="176" class="ln"/><line x1="458" y1="176" x2="482" y2="176" class="ln thick"/><line x1="458" y1="184" x2="482" y2="184" class="ln thick"/><line x1="470" y1="184" x2="470" y2="206" class="ln"/><text x="448" y="180" class="tx b" text-anchor="end">C<tspan class="sub">OUT</tspan></text><line x1="470" y1="120" x2="560" y2="120" class="ln"/><line x1="560" y1="120" x2="560" y2="150" class="ln"/><rect x="538" y="150" width="44" height="60" rx="6" class="ln fl-bg"/><text x="560" y="185" class="tx b" text-anchor="middle">Tải</text><line x1="560" y1="210" x2="560" y2="260" class="ln"/><line x1="456" y1="260" x2="484" y2="260" class="ln thick"/><line x1="461" y1="266" x2="479" y2="266" class="ln"/><line x1="466" y1="272" x2="474" y2="272" class="ln"/><line x1="470" y1="206" x2="470" y2="260" class="ln"/><line x1="546" y1="260" x2="574" y2="260" class="ln thick"/><line x1="551" y1="266" x2="569" y2="266" class="ln"/><line x1="556" y1="272" x2="564" y2="272" class="ln"/><text x="620" y="125" class="tx b">V<tspan class="sub">OUT</tspan> 12 V</text><text x="620" y="144" class="tm">2 A</text><text x="20" y="210" class="twr b">Pha 1: Q1 bật</text><text x="20" y="228" class="twr">dòng L → Q1 → GND, L nạp năng lượng</text><text x="20" y="254" class="ta2 b">Pha 2: Q1 tắt</text><text x="20" y="272" class="ta2">dòng L → D1 → C<tspan class="sub">OUT</tspan> và tải</text><text x="20" y="296" class="tm">I<tspan class="sub">IN</tspan> = 5,22 A trung bình, ripple ΔI<tspan class="sub">L</tspan> = 2,07 A, đỉnh 6,25 A; dòng qua D1 trung bình 2 A, đỉnh 6,25 A</text></svg><figcaption>Hình 1. Mạch boost 5 V → 12 V/2 A: khi Q1 bật dòng nạp cuộn cảm, khi Q1 tắt dòng đẩy qua D1 ra tụ và tải. Dòng vào lớn gấp khoảng 2,6 lần dòng ra.</figcaption></figure>
+</section>
+<section id="a2-tính-cuộn-cảm" class="level2 ">
+<h2>2. Tính cuộn cảm</h2>
+<p>Chọn ripple dòng khoảng 40% dòng vào:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub><mo>=</mo><mn>0,4</mn><mo>×</mo><mn>5,22</mn><mo>≈</mo><mn>2,09</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">\Delta I_L = 0{,}4 \times 5{,}22 \approx 2{,}09\ \text{A}</annotation></semantics></math></p>
+<p>Điện cảm cần thiết:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><mfrac><mrow><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>×</mo><mi>D</mi></mrow><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow></mfrac><mo>=</mo><mfrac><mrow><mn>5</mn><mo>×</mo><mn>0,583</mn></mrow><mrow><mn>2,09</mn><mo>×</mo><mn>300</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup></mrow></mfrac><mo>≈</mo><mn>4,66</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">H</mtext></mrow><annotation encoding="application/x-tex">L = \frac{V_{IN} \times D}{\Delta I_L \times f_{sw}} = \frac{5 \times 0{,}583}{2{,}09 \times 300\times10^3} \approx 4{,}66\ \mu\text{H}</annotation></semantics></math></p>
+<p>Chọn giá trị chuẩn gần nhất 4,7 µH. Với L = 4,7 µH, ripple thực tế:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><msub><mi>I</mi><mi>L</mi></msub><mo>=</mo><mfrac><mrow><mn>5</mn><mo>×</mo><mn>0,583</mn></mrow><mrow><mn>4,7</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup><mo>×</mo><mn>300</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup></mrow></mfrac><mo>≈</mo><mn>2,07</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">\Delta I_L = \frac{5 \times 0{,}583}{4{,}7\times10^{-6} \times 300\times10^3} \approx 2{,}07\ \text{A}</annotation></semantics></math></p>
+<p>Dòng đỉnh và dòng đáy của cuộn cảm:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>P</mi><mi>K</mi></mrow></msub><mo>=</mo><mn>5,22</mn><mo>+</mo><mfrac><mrow><mn>2,07</mn></mrow><mn>2</mn></mfrac><mo>≈</mo><mn>6,25</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>I</mi><mrow><mi>M</mi><mi>I</mi><mi>N</mi></mrow></msub><mo>=</mo><mn>5,22</mn><mo>−</mo><mn>1,04</mn><mo>≈</mo><mn>4,18</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">I_{PK} = 5{,}22 + \frac{2{,}07}{2} \approx 6{,}25\ \text{A}, \qquad I_{MIN} = 5{,}22 - 1{,}04 \approx 4{,}18\ \text{A}</annotation></semantics></math></p>
+<p>Cuộn cảm phải có dòng bão hòa <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mrow><mi>s</mi><mi>a</mi><mi>t</mi></mrow></msub><annotation encoding="application/x-tex">I_{sat}</annotation></semantics></math> lớn hơn 6,25 A với biên an toàn, thực tế chọn loại 8 đến 10 A. Nếu IC boost có hạn dòng đỉnh, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mrow><mi>s</mi><mi>a</mi><mi>t</mi></mrow></msub><annotation encoding="application/x-tex">I_{sat}</annotation></semantics></math> nên vượt ngưỡng hạn dòng đó, tương tự cách chọn ở bài buck tuần 1.</p>
+</section>
+<section id="a2-chọn-mosfet-điện-áp-dòng-và-r_dson" class="level2 ">
+<h2>3. Chọn MOSFET: điện áp, dòng và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math></h2>
+<section id="a2-điện-áp-v_ds" class="level3">
+<h3>Điện áp <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>D</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">V_{DS}</annotation></semantics></math></h3>
+<p>Khi MOSFET tắt, điện áp trên nó bằng điện áp ra cộng điện áp rơi diode, cộng xung do điện cảm ký sinh. Với ra 12 V, xung cho phép thêm khoảng 30%, đỉnh khoảng 15,6 V. Quy tắc thường dùng: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>m</mi><mi>a</mi><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">V_{DS(max)}</annotation></semantics></math> lớn hơn ít nhất 1,5 lần điện áp ra, tức từ 18 V trở lên. Loại 30 V là lựa chọn thông dụng, có biên an toàn tốt cho các xung hơn 20 V.</p>
+</section>
+<section id="a2-dòng-và-r_dson" class="level3">
+<h3>Dòng và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math></h3>
+<p>Dòng hiệu dụng (RMS) qua MOSFET trong mỗi chu kỳ, với dạng sóng tam giác trên nền DC và thời gian bật <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>I</mi><mrow><mi>R</mi><mi>M</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Q</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mn>2</mn></msubsup><mo>=</mo><mi>D</mi><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>I</mi><mrow><mi>I</mi><mi>N</mi></mrow><mn>2</mn></msubsup><mo>+</mo><mfrac><mrow><mi>Δ</mi><msubsup><mi>I</mi><mi>L</mi><mn>2</mn></msubsup></mrow><mn>12</mn></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0,583</mn><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>,</mo><msup><mn>22</mn><mn>2</mn></msup><mo>+</mo><mfrac><mrow><mn>2</mn><mo>,</mo><msup><mn>07</mn><mn>2</mn></msup></mrow><mn>12</mn></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>16,1</mn><mspace width="0.222em"></mspace><msup><mtext mathvariant="normal">A</mtext><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">I_{RMS(Q)}^2 = D \times \left(I_{IN}^2 + \frac{\Delta I_L^2}{12}\right) = 0{,}583 \times \left(5{,}22^2 + \frac{2{,}07^2}{12}\right) \approx 16{,}1\ \text{A}^2</annotation></semantics></math></p>
+<p>Suy ra <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>R</mi><mi>M</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Q</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>≈</mo><mn>4,01</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">I_{RMS(Q)} \approx 4{,}01\ \text{A}</annotation></semantics></math>.</p>
+<p>Chọn MOSFET 30 V có <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math> khoảng 10 mΩ ở <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>G</mi><mi>S</mi></mrow></msub><mo>=</mo><mn>4,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{GS} = 4{,}5\ \text{V}</annotation></semantics></math> (giá trị minh họa, cần kiểm tra trong datasheet của linh kiện cụ thể). Lưu ý nguồn điều khiển cổng chỉ có thể là 5 V, nên phải chọn loại logic-level, được ghi rõ <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math> ở <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>G</mi><mi>S</mi></mrow></msub><mo>=</mo><mn>4,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{GS} = 4{,}5\ \text{V}</annotation></semantics></math> hoặc thấp hơn, không dùng loại chỉ ghi ở 10 V.</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math> tăng theo nhiệt độ; ở mối nối 100 °C nhân khoảng 1,5 lần (xem hình chuẩn hóa trong bài datasheet MOSFET). Dùng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><mn>10</mn><mo>×</mo><mn>1,5</mn><mo>=</mo><mn>15</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R = 10 \times 1{,}5 = 15\ \text{m}\Omega</annotation></semantics></math> khi tính.</p>
+</section>
+</section>
+<section id="a2-các-thành-phần-tổn-hao-của-mosfet" class="level2 ">
+<h2>4. Các thành phần tổn hao của MOSFET</h2>
+<section id="a2-tổn-hao-dẫn" class="level3">
+<h3>4.1 Tổn hao dẫn</h3>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>c</mi><mi>o</mi><mi>n</mi><mi>d</mi></mrow></msub><mo>=</mo><msubsup><mi>I</mi><mrow><mi>R</mi><mi>M</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Q</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mn>2</mn></msubsup><mo>×</mo><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>=</mo><mn>16,1</mn><mo>×</mo><mn>0,015</mn><mo>≈</mo><mn>0,24</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{cond} = I_{RMS(Q)}^2 \times R_{DS(on)} = 16{,}1 \times 0{,}015 \approx 0{,}24\ \text{W}</annotation></semantics></math></p>
+</section>
+<section id="a2-tổn-hao-đóng-cắt" class="level3">
+<h3>4.2 Tổn hao đóng cắt</h3>
+<p>Tổn hao đóng cắt xảy ra trong khoảng chuyển tiếp khi cả điện áp và dòng đều khác 0. Mô hình tuyến tính:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><msub><mi>V</mi><mrow><mi>D</mi><mi>S</mi></mrow></msub><mo>×</mo><mi>I</mi><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>t</mi><mi>r</mi></msub><mo>+</mo><msub><mi>t</mi><mi>f</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub></mrow><annotation encoding="application/x-tex">P_{sw} = \frac{1}{2} V_{DS} \times I \times (t_r + t_f) \times f_{sw}</annotation></semantics></math></p>
+<p>Giả định thời gian lên <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mi>r</mi></msub><mo>=</mo><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">ns</mtext></mrow><annotation encoding="application/x-tex">t_r = 5\ \text{ns}</annotation></semantics></math> (bật), thời gian xuống <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mi>f</mi></msub><mo>=</mo><mn>6</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">ns</mtext></mrow><annotation encoding="application/x-tex">t_f = 6\ \text{ns}</annotation></semantics></math> (tắt), đây là giá trị minh họa; thực tế tính từ <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Q</mi><mrow><mi>g</mi><mi>d</mi></mrow></msub><mi>/</mi><msub><mi>I</mi><mrow><mi>g</mi><mi>a</mi><mi>t</mi><mi>e</mi></mrow></msub></mrow><annotation encoding="application/x-tex">Q_{gd}/I_{gate}</annotation></semantics></math>. Khi tắt, dòng bằng dòng đỉnh <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>6,25</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">6{,}25\ \text{A}</annotation></semantics></math>; khi bật, dòng bằng dòng đáy <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4,18</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">4{,}18\ \text{A}</annotation></semantics></math> (CCM):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>s</mi><mi>w</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>f</mi><mi>f</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>=</mo><mn>0,5</mn><mo>×</mo><mn>12</mn><mo>×</mo><mn>6,25</mn><mo>×</mo><mn>6</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>300</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>≈</mo><mn>0,068</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{sw(off)} = 0{,}5 \times 12 \times 6{,}25 \times 6\times10^{-9} \times 300\times10^3 \approx 0{,}068\ \text{W}</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>s</mi><mi>w</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>=</mo><mn>0,5</mn><mo>×</mo><mn>12</mn><mo>×</mo><mn>4,18</mn><mo>×</mo><mn>5</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>300</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>≈</mo><mn>0,038</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{sw(on)} = 0{,}5 \times 12 \times 4{,}18 \times 5\times10^{-9} \times 300\times10^3 \approx 0{,}038\ \text{W}</annotation></semantics></math></p>
+<p>Tổng khoảng 0,105 W. Với MOSFET nhanh, tổn hao này nhỏ ở 300 kHz; nếu tăng tần số lên 600 kHz và giảm ripple, tổng đóng cắt tăng lên khoảng 0,21 W, đáng kể hơn.</p>
+<figure class="fig"><svg viewBox="0 0 760 290" role="img" aria-label="Dạng sóng chuyển mạch của MOSFET boost: vùng chồng lấn điện áp và dòng" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="165" y="22" class="tx b" text-anchor="middle">Cạnh tắt: t<tspan class="sub">f</tspan> = 6 ns, dòng 6,25 A</text><line x1="30" y1="230" x2="340" y2="230" class="ln" marker-end="url(#arr)"/><line x1="30" y1="230" x2="30" y2="40" class="ln" marker-end="url(#arr)"/><text x="340" y="250" class="tm" text-anchor="end">t</text><text x="38" y="44" class="tm"></text><path d="M130,200 L165,140 L200,200 Z" class="fl-wr" style="opacity:.35;stroke:none"/><path d="M30,200 L130,200 L200,80 L340,80" class="a2 thick" fill="none"/><path d="M30,80 L130,80 L200,200 L340,200" class="ln thick" fill="none"/><text x="46" y="58" class="ta2 b">V<tspan class="sub">DS</tspan> (0 → 12 V)</text><text x="210" y="60" class="tx b">I<tspan class="sub">D</tspan> (6,25 A → 0)</text><text x="165" y="260" class="twr b" text-anchor="middle">vùng chồng lấn = tổn hao đóng cắt</text><line x1="380" y1="14" x2="380" y2="280" class="grid"/><text x="550" y="22" class="tx b" text-anchor="middle">Cạnh bật: t<tspan class="sub">r</tspan> = 5 ns, dòng 4,18 A</text><line x1="415" y1="230" x2="725" y2="230" class="ln" marker-end="url(#arr)"/><line x1="415" y1="230" x2="415" y2="40" class="ln" marker-end="url(#arr)"/><text x="725" y="250" class="tm" text-anchor="end">t</text><text x="423" y="44" class="tm"></text><path d="M515,200 L550,145 L585,200 Z" class="fl-wr" style="opacity:.35;stroke:none"/><path d="M415,80 L515,80 L585,200 L725,200" class="a2 thick" fill="none"/><path d="M415,200 L515,200 L585,110 L725,110" class="ln thick" fill="none"/><text x="431" y="58" class="ta2 b">V<tspan class="sub">DS</tspan> (12 → 0 V)</text><text x="595" y="60" class="tx b">I<tspan class="sub">D</tspan> (0 → 4,18 A)</text><text x="550" y="260" class="twr b" text-anchor="middle">vùng chồng lấn = tổn hao đóng cắt</text></svg><figcaption>Hình 2. Tổn hao đóng cắt xuất hiện ở vùng điện áp và dòng cùng khác 0 trong lúc chuyển mạch: cạnh tắt (6 ns, 6,25 A) và cạnh bật (5 ns, 4,18 A).</figcaption></figure>
+</section>
+<section id="a2-tổn-hao-điều-khiển-cổng-và-c_oss" class="level3">
+<h3>4.3 Tổn hao điều khiển cổng và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">C_{OSS}</annotation></semantics></math></h3>
+<p>Điều khiển cổng nạp và xả điện tích <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Q</mi><mi>g</mi></msub><annotation encoding="application/x-tex">Q_g</annotation></semantics></math> mỗi chu kỳ. Với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Q</mi><mi>g</mi></msub><mo>=</mo><mn>30</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nC</mtext></mrow><annotation encoding="application/x-tex">Q_g = 30\ \text{nC}</annotation></semantics></math> ở <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>G</mi><mi>S</mi></mrow></msub><mo>=</mo><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{GS} = 5\ \text{V}</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>g</mi><mi>a</mi><mi>t</mi><mi>e</mi></mrow></msub><mo>=</mo><msub><mi>Q</mi><mi>g</mi></msub><mo>×</mo><msub><mi>V</mi><mrow><mi>G</mi><mi>S</mi></mrow></msub><mo>×</mo><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>=</mo><mn>30</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>5</mn><mo>×</mo><mn>300</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>=</mo><mn>0,045</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{gate} = Q_g \times V_{GS} \times f_{sw} = 30\times10^{-9} \times 5 \times 300\times10^3 = 0{,}045\ \text{W}</annotation></semantics></math></p>
+<p>(thực tế phần lớn tổn hao này nằm ở mạch điều khiển cổng, nhưng vẫn lấy từ nguồn, nên tính vào bài toán hiệu suất.)</p>
+<p>Tổn hao nạp xả điện dung ra <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">C_{OSS}</annotation></semantics></math>, giả định 400 pF:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>C</mi><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><msub><mi>C</mi><mrow><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub><msubsup><mi>V</mi><mrow><mi>D</mi><mi>S</mi></mrow><mn>2</mn></msubsup><msub><mi>f</mi><mrow><mi>s</mi><mi>w</mi></mrow></msub><mo>=</mo><mn>0,5</mn><mo>×</mo><mn>400</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>12</mn></mrow></msup><mo>×</mo><mn>144</mn><mo>×</mo><mn>300</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>≈</mo><mn>0,0086</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{COSS} = \frac{1}{2} C_{OSS} V_{DS}^2 f_{sw} = 0{,}5 \times 400\times10^{-12} \times 144 \times 300\times10^3 \approx 0{,}0086\ \text{W}</annotation></semantics></math></p>
+<p>Tổng tổn hao MOSFET:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>Q</mi></msub><mo>=</mo><mn>0,24</mn><mo>+</mo><mn>0,105</mn><mo>+</mo><mn>0,045</mn><mo>+</mo><mn>0,009</mn><mo>≈</mo><mn>0,40</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_Q = 0{,}24 + 0{,}105 + 0{,}045 + 0{,}009 \approx 0{,}40\ \text{W}</annotation></semantics></math></p>
+<p>Nếu gói tỏa nhiệt có <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>θ</mi><mi>J</mi><mi>A</mi></mrow></msub><annotation encoding="application/x-tex">R_{\theta JA}</annotation></semantics></math> khoảng 50 °C/W (giá trị giả định cho gói SO-8 hoặc PowerPAK có đồng tản trên PCB), độ tăng nhiệt mối nối là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,40</mn><mo>×</mo><mn>50</mn><mo>=</mo><mn>20</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">°C</mtext></mrow><annotation encoding="application/x-tex">0{,}40 \times 50 = 20\ \text{°C}</annotation></semantics></math>, chấp nhận được.</p>
+</section>
+</section>
+<section id="a2-diode-schottky-hay-mosfet-đồng-bộ" class="level2 ">
+<h2>5. Diode Schottky hay MOSFET đồng bộ?</h2>
+<p>Dòng qua diode có giá trị trung bình bằng dòng ra, nghĩa là 2 A, nhưng đỉnh là 6,25 A. Với Schottky có <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mi>F</mi></msub><mo>≈</mo><mn>0,45</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_F \approx 0{,}45\ \text{V}</annotation></semantics></math> (giả định ở dòng này):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mi>D</mi></msub><mo>=</mo><msub><mi>V</mi><mi>F</mi></msub><mo>×</mo><msub><mi>I</mi><mrow><mi>O</mi><mi>U</mi><mi>T</mi></mrow></msub><mo>=</mo><mn>0,45</mn><mo>×</mo><mn>2</mn><mo>=</mo><mn>0,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_D = V_F \times I_{OUT} = 0{,}45 \times 2 = 0{,}9\ \text{W}</annotation></semantics></math></p>
+<p>Đây là mục tổn hao lớn nhất trong mạch, gấp hơn hai lần MOSFET. Diode cần chọn loại có dòng định mức trung bình lớn hơn 2 A với biên rộng, điện áp ngược khoảng 30 V trở lên, và dòng xung chịu được 6,25 A. Một mã Schottky 5 A/40 V thông dụng là SS54 (cần kiểm tra lại <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mi>F</mi></msub><annotation encoding="application/x-tex">V_F</annotation></semantics></math> và dòng xung trong datasheet của hãng cụ thể).</p>
+<p>Thay diode bằng MOSFET đồng bộ (synchronous) có <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>=</mo><mn>15</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_{DS(on)} = 15\ \text{m}\Omega</annotation></semantics></math> ở nhiệt độ làm việc thì dòng hiệu dụng bình phương qua nó là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>D</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>I</mi><mrow><mi>I</mi><mi>N</mi></mrow><mn>2</mn></msubsup><mo>+</mo><mi>Δ</mi><msubsup><mi>I</mi><mi>L</mi><mn>2</mn></msubsup><mi>/</mi><mn>12</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>11,5</mn><mspace width="0.222em"></mspace><msup><mtext mathvariant="normal">A</mtext><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">(1-D)\times(I_{IN}^2 + \Delta I_L^2/12) \approx 11{,}5\ \text{A}^2</annotation></semantics></math>, nên tổn hao dẫn chỉ khoảng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>11,5</mn><mo>×</mo><mn>0,015</mn><mo>≈</mo><mn>0,17</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">11{,}5 \times 0{,}015 \approx 0{,}17\ \text{W}</annotation></semantics></math> (chưa tính tổn hao thời gian chết), thấp hơn nhiều so với 0,9 W. Đổi lại cần IC có điều khiển đồng bộ và thời gian chết (dead time) đúng. Đó là lý do hầu hết bộ boost công suất vừa trở lên dùng đồng bộ.</p>
+</section>
+<section id="a2-hiệu-suất-ước-tính-của-cả-mạch" class="level2 ">
+<h2>6. Hiệu suất ước tính của cả mạch</h2>
+<p>Cuộn cảm có điện trở DC (DCR) 15 mΩ (giả định): <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>P</mi><mrow><mi>D</mi><mi>C</mi><mi>R</mi></mrow></msub><mo>=</mo><mn>5</mn><mo>,</mo><msup><mn>22</mn><mn>2</mn></msup><mo>×</mo><mn>0,015</mn><mo>≈</mo><mn>0,41</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">P_{DCR} = 5{,}22^2 \times 0{,}015 \approx 0{,}41\ \text{W}</annotation></semantics></math>.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr class="header">
+<th>Thành phần</th>
+<th>Tổn hao (W)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>MOSFET (dẫn + đóng cắt + cổng + <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">C_{OSS}</annotation></semantics></math>)</td>
+<td>0,40</td>
+</tr>
+<tr class="even">
+<td>Diode Schottky</td>
+<td>0,90</td>
+</tr>
+<tr class="odd">
+<td>Cuộn cảm (DCR)</td>
+<td>0,41</td>
+</tr>
+<tr class="even">
+<td><strong>Tổng</strong></td>
+<td><strong>1,71</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mfrac><mn>24</mn><mrow><mn>24</mn><mo>+</mo><mn>1,71</mn></mrow></mfrac><mo>≈</mo><mn>93,4</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">\eta = \frac{24}{24 + 1{,}71} \approx 93{,}4\%</annotation></semantics></math></p>
+<p>Kết quả hơi lạc quan hơn giả định 92% vì chưa tính tổn hao lõi cuộn cảm, ESR tụ, điện trở đường mạch và dòng tĩnh của IC. Trong thực tế nên dự phòng thêm khoảng 0,3 đến 0,5 W và kiểm tra bằng đo đạc.</p>
+<figure class="fig"><svg viewBox="0 0 760 340" role="img" aria-label="Phân bổ tổn hao trong mạch boost 5V→12V/2A" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="250" y="48" class="tx" text-anchor="end">Diode Schottky (V<tspan class="sub">F</tspan> 0,45 V × 2 A)</text><rect x="260" y="30" width="378" height="26" rx="4" class="fl-wr"/><text x="646" y="48" class="tx b">0,9 W</text><text x="250" y="88" class="tx" text-anchor="end">Cuộn cảm (DCR 15 mΩ)</text><rect x="260" y="70" width="172" height="26" rx="4" class="fl-a2"/><text x="440" y="88" class="tx b">0,41 W</text><text x="250" y="128" class="tx" text-anchor="end">MOSFET: dẫn</text><rect x="260" y="110" width="101" height="26" rx="4" class="fl-a2"/><text x="369" y="128" class="tx b">0,24 W</text><text x="250" y="168" class="tx" text-anchor="end">MOSFET: đóng cắt</text><rect x="260" y="150" width="44" height="26" rx="4" class="fl-a2"/><text x="312" y="168" class="tx b">0,105 W</text><text x="250" y="208" class="tx" text-anchor="end">MOSFET: điều khiển cổng</text><rect x="260" y="190" width="19" height="26" rx="4" class="fl-a2"/><text x="287" y="208" class="tx b">0,045 W</text><text x="250" y="248" class="tx" text-anchor="end">MOSFET: C<tspan class="sub">OSS</tspan></text><rect x="260" y="230" width="4" height="26" rx="4" class="fl-a2"/><text x="272" y="248" class="tx b">0,009 W</text><line x1="260" y1="26" x2="260" y2="272" class="ln"/><text x="20" y="306" class="tx b">Tổng ≈ 1,71 W trên 24 W ra → hiệu suất ước tính ≈ 93,4%</text><text x="20" y="326" class="tm">Chưa tính lõi cuộn cảm, ESR tụ, điện trở đường mạch, dòng tĩnh IC</text></svg><figcaption>Hình 3. Phân bổ tổn hao với các giá trị minh họa: diode Schottky là mục lớn nhất, MOSFET chỉ khoảng 0,40 W.</figcaption></figure>
+</section>
+<section id="a2-layout-và-an-toàn" class="level2 ">
+<h2>7. Layout và an toàn</h2>
+<ul>
+<li>Hot loop của boost gồm cuộn cảm (nút SW), MOSFET, diode và tụ ra. Giữ vòng MOSFET → diode → tụ ra càng ngắn càng tốt, giống nguyên tắc ở bài layout buck tuần trước.</li>
+<li>Đường dòng 5,2 A trung bình cần đường mạch rộng: dùng cùng quy tắc như bài layout (khoảng 1,4 mm cho 3 A và ΔT 10 °C; với 5,2 A cùng công thức IPC-2221 cho khoảng 2,9 mm, nên dùng mảng đồng).</li>
+<li>Mạch boost không tự bảo vệ ngắn mạch đầu ra: khi MOSFET tắt, diode vẫn nối đầu vào với đầu ra. Cần cầu chì hoặc hạn dòng ở nguồn vào. Khi cắm nguồn vào, tụ ra nạp xung dòng lớn qua diode (inrush), cần xem hạn dòng của nguồn cấp.</li>
+<li>Điện áp ra 12 V vẫn an toàn khi chạm, nhưng dòng 2 A đủ làm nóng dây và đầu nối đáng kể; dùng đầu nối chịu được 6 A trở lên ở phía vào.</li>
+</ul>
+</section>
+<section id="a2-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
+<h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
+<ul>
+<li>Dùng MOSFET chỉ có <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math> ghi ở <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>G</mi><mi>S</mi></mrow></msub><mo>=</mo><mn>10</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">V_{GS} = 10\ \text{V}</annotation></semantics></math> trong khi điều khiển cổng chỉ có 5 V.</li>
+<li>Chọn MOSFET 20 V cho ra 12 V, không còn biên khi có xung điện cảm ký sinh.</li>
+<li>Tính dòng theo dòng ra 2 A thay vì dòng vào 5,2 A, dẫn tới cuộn cảm và đường mạch quá nhỏ.</li>
+<li>Chọn cuộn cảm theo dòng định mức, bỏ qua dòng bão hòa dưới 6,25 A.</li>
+<li>Quên rằng diode Schottky là nguồn tổn hao lớn nhất và không có tản nhiệt.</li>
+<li>Bỏ qua dòng khởi động (inrush) khi cắm nguồn vào, làm sụt áp nguồn cấp và reset mạch.</li>
+<li>Đo hiệu suất bằng đồng hồ rẻ tiền ở dòng xung, sai số lớn.</li>
+<li>Không kiểm tra nhiệt độ khi chạy đủ tải lâu, chỉ thử vài giây.</li>
+</ul>
+</section>
+<section id="a2-tổng-kết" class="level2 summary">
+<h2>Tổng kết</h2>
+<ul>
+<li>Dòng vào của boost lớn hơn dòng ra nhiều lần (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>=</mo><msub><mi>P</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mi>/</mi><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>≈</mo><mn>5,22</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">I_{IN} = P_{IN}/V_{IN} \approx 5{,}22\ \text{A}</annotation></semantics></math>); cuộn cảm, đường mạch và đầu nối phải chọn theo dòng này, cộng ripple.</li>
+<li>Chọn MOSFET theo <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>D</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">V_{DS}</annotation></semantics></math> (lớn hơn 1,5 lần điện áp ra), <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>D</mi><mi>S</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>o</mi><mi>n</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">R_{DS(on)}</annotation></semantics></math> ở đúng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>G</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">V_{GS}</annotation></semantics></math> của mạch điều khiển, và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Q</mi><mi>g</mi></msub><annotation encoding="application/x-tex">Q_g</annotation></semantics></math> nhỏ.</li>
+<li>Tổn hao MOSFET gồm dẫn (≈ 0,24 W), đóng cắt (≈ 0,105 W), cổng (≈ 0,045 W) và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>O</mi><mi>S</mi><mi>S</mi></mrow></msub><annotation encoding="application/x-tex">C_{OSS}</annotation></semantics></math> (≈ 0,009 W); với ví dụ này tổng khoảng 0,40 W.</li>
+<li>Diode Schottky là tổn hao lớn nhất (≈ 0,9 W); dùng boost đồng bộ để nâng hiệu suất.</li>
+<li>Hiệu suất ước tính khoảng 93%, nhưng nên dự phòng thêm cho các tổn hao chưa tính và kiểm chứng bằng đo thực tế.</li>
+</ul>
+</section>
+<section id="a2-gợi-ý-đọc-tiếp" class="level2 next">
+<h2>Gợi ý đọc tiếp</h2>
+<ul>
+<li>Tính bù và tụ ra cho mạch boost (điểm không phía bên phải RHP zero).</li>
+<li>Boost đồng bộ: dead time và cách chọn IC điều khiển.</li>
+<li>Đo hiệu suất nguồn đóng cắt đúng cách (bài về oscilloscope cùng tuần này cho phần đo ripple).</li>
+</ul>
+</section>
+<section id="a2-nguồn-tham-khảo" class="level2 refs">
+<h2>Nguồn tham khảo</h2>
+<ul>
+<li>Datasheet và ghi chú ứng dụng của các IC boost (Texas Instruments, Analog Devices, Monolithic Power Systems) về chọn linh kiện và tính tổn hao: cần kiểm tra mã tài liệu cụ thể.</li>
+<li>Tài liệu “Power MOSFET basics” và các ghi chú ứng dụng chọn MOSFET cho mạch chuyển đổi DC-DC của Infineon, Vishay, onsemi: cần kiểm tra lại mã tài liệu.</li>
+<li>Sách giáo khoa điện tử công suất (ví dụ Erickson và Maksimovic, “Fundamentals of Power Electronics”) cho công thức boost CCM.</li>
+</ul>
+</section>
+</div>
+  <a class="totop" href="#top">↑ Về đầu trang</a>
+</article>
+<article id="a3" class="post a3">
+  <header class="post-head">
+    <div class="post-num">Bài 03</div>
+    <div class="chips"><span class="chip cat">Thiết kế nguồn</span><span class="chip lvl">Mức Trung bình</span><span class="chip">⏱ 10 phút đọc</span></div>
+    <h2 class="post-title">Mạch sạc pin lithium 1 cell bằng IC sạc tuyến tính: dòng sạc, nhiệt và bảo vệ</h2>
+    <p class="lede">Thiết kế mạch sạc pin lithium 1 cell bằng IC sạc tuyến tính: giai đoạn CC-CV, đặt dòng sạc, tính tổn hao nhiệt, cảm biến NTC và các mạch bảo vệ cần có.</p>
+    <ul class="tags"><li>#sạc pin lithium</li><li>#IC sạc tuyến tính</li><li>#CC-CV</li><li>#tổn hao nhiệt</li><li>#NTC</li><li>#bảo vệ pin</li></ul>
+  </header>
+  <div class="post-body"><p>Sạc pin lithium một cell từ cổng USB 5 V là bài toán quen thuộc trong thiết bị cầm tay: chọn một IC sạc, đặt một điện trở, nối pin và xong. Nhưng IC sạc tuyến tính biến phần chênh lệch điện áp thành nhiệt, và pin lithium là loại pin không tha thứ cho sai sót: sạc quá áp, quá nhiệt, hay sạc khi pin đã hỏng có thể gây cháy. Bài này đi qua nguyên lý sạc CC-CV, cách đặt dòng sạc, tính lượng nhiệt IC phải chịu ở từng giai đoạn, và các lớp bảo vệ nên có.</p><div class="stats"><div class="stat"><b>1,0 W</b><span>công suất IC khi pin 3,0 V, nguồn 5 V, sạc 500 mA</span></div><div class="stat"><b>2 kΩ</b><span>R<sub>PROG</sub> đặt 500 mA với MCP73831</span></div><div class="stat"><b>28,2 kΩ</b><span>NTC 10 kΩ ở 0 °C: ngưỡng cấm sạc lạnh</span></div><div class="stat"><b>4 đến 5 giờ</b><span>ước lượng sạc đầy pin 2000 mAh ở 500 mA</span></div></div>
+<section id="a3-kiến-thức-nền-cần-có" class="level2 basics">
+<h2>Kiến thức nền cần có</h2>
+<ul>
+<li><strong>Pin Li-ion/Li-polymer 1 cell</strong>: điện áp danh định 3,7 V, đầy ở 4,2 V (sai số cho phép rất chặt, thường ±1% hoặc tốt hơn), cạn ở khoảng 3,0 V trở xuống tùy loại pin. Dung lượng ghi bằng mAh, dòng sạc thường biểu diễn theo C: 1C bằng dung lượng chia cho 1 giờ. Ví dụ pin 2000 mAh có 1C = 2 A, 0,25C = 500 mA.</li>
+<li><strong>IC sạc tuyến tính</strong> (linear charger) hoạt động như một nguồn dòng/áp dạng LDO: phần điện áp thừa giữa đầu vào và pin được tiêu thụ thành nhiệt trong IC.</li>
+<li>Công thức công suất tỏa nhiệt: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>−</mo><msub><mi>V</mi><mrow><mi>B</mi><mi>A</mi><mi>T</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><msub><mi>I</mi><mrow><mi>C</mi><mi>H</mi><mi>G</mi></mrow></msub></mrow><annotation encoding="application/x-tex">P = (V_{IN} - V_{BAT}) \times I_{CHG}</annotation></semantics></math>; tăng nhiệt: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>T</mi><mo>=</mo><mi>P</mi><mo>×</mo><msub><mi>R</mi><mrow><mi>θ</mi><mi>J</mi><mi>A</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\Delta T = P \times R_{\theta JA}</annotation></semantics></math>.</li>
+</ul>
+</section>
+<section id="a3-quy-trình-sạc-cc-cv" class="level2 ">
+<h2>1. Quy trình sạc CC-CV</h2>
+<p>Pin lithium được sạc theo ba giai đoạn:</p>
+<ol type="1">
+<li><strong>Sạc dòng nhỏ (pre-charge)</strong>: khi điện áp pin quá thấp (dưới khoảng 2,9 V đến 3,0 V), IC sạc với dòng nhỏ, thường khoảng 10% dòng sạc chính, để đưa cell lên mức an toàn. Nếu pin không lên được trong thời gian định trước, IC báo lỗi.</li>
+<li><strong>Dòng không đổi (CC, constant current)</strong>: dòng sạc giữ ở giá trị đặt, điện áp pin tăng dần từ khoảng 3 V lên 4,2 V.</li>
+<li><strong>Áp không đổi (CV, constant voltage)</strong>: khi điện áp pin chạm 4,2 V, IC giữ nguyên 4,2 V, dòng sạc giảm dần theo hàm mũ. Khi dòng giảm xuống khoảng 10% dòng sạc chính (ngưỡng kết thúc, termination), IC ngừng sạc.</li>
+</ol>
+<figure class="fig"><svg viewBox="0 0 760 316" role="img" aria-label="Đồ thị sạc CC-CV của pin lithium một cell" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="70" y1="250" x2="700" y2="250" class="ln" marker-end="url(#arr)"/><line x1="70" y1="250" x2="70" y2="20" class="ln" marker-end="url(#arr)"/><text x="700" y="270" class="tm" text-anchor="end">t (giờ)</text><text x="78" y="24" class="tm"></text><line x1="130" y1="30" x2="130" y2="250" class="grid"/><line x1="400" y1="30" x2="400" y2="250" class="grid"/><line x1="620" y1="30" x2="620" y2="250" class="grid"/><text x="100" y="40" class="tm" text-anchor="middle">pre-charge</text><text x="265" y="40" class="tm" text-anchor="middle">CC: dòng không đổi</text><text x="510" y="40" class="tm" text-anchor="middle">CV: áp không đổi 4,2 V</text><text x="660" y="40" class="tm" text-anchor="middle">kết thúc</text><path d="M70,240 L130,199 L160,178 L200,166 L260,156 L320,146 L370,128 L400,100 L700,100" class="a3 thick" fill="none"/><path d="M70,222 L130,222 L130,60 L400,60 L430,110 L470,155 L520,192 L570,212 L620,222 L700,222" class="a2 thick" fill="none"/><text x="64" y="104" class="ta3 b" text-anchor="end">4,2 V</text><text x="64" y="203" class="ta3" text-anchor="end">3,0 V</text><text x="270" y="78" class="ta2 b" text-anchor="middle">I = 500 mA</text><text x="136" y="240" class="ta2">≈ 50 mA</text><text x="640" y="240" class="ta2" text-anchor="middle">≈ 50 mA</text><text x="232" y="140" class="ta3 b">V<tspan class="sub">BAT</tspan></text><text x="20" y="284" class="ta3 b">━ điện áp pin</text><text x="150" y="284" class="ta2 b">━ dòng sạc</text><text x="20" y="306" class="tm">Ví dụ pin 2000 mAh sạc 500 mA: CC khoảng 3,2 giờ, CV thêm 1 đến 1,5 giờ</text></svg><figcaption>Hình 1. Đồ thị sạc CC-CV: pre-charge dòng nhỏ, CC giữ dòng 500 mA, CV giữ 4,2 V rồi dòng giảm dần tới ngưỡng kết thúc khoảng 10% dòng đặt.</figcaption></figure>
+<p>Thời gian sạc ước lượng cho pin 2000 mAh ở dòng 500 mA: giai đoạn CC mất khoảng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2000</mn><mi>/</mi><mn>500</mn><mo>×</mo><mn>0,8</mn><mo>≈</mo><mn>3,2</mn></mrow><annotation encoding="application/x-tex">2000/500 \times 0{,}8 \approx 3{,}2</annotation></semantics></math> giờ (khoảng 80% dung lượng), giai đoạn CV thêm khoảng 1 đến 1,5 giờ; tổng quãng 4 đến 5 giờ. Đây là ước lượng thô, thực tế phụ thuộc vào nội trở pin và IC.</p>
+</section>
+<section id="a3-đặt-dòng-sạc-bằng-điện-trở" class="level2 ">
+<h2>2. Đặt dòng sạc bằng điện trở</h2>
+<p>Hầu hết IC sạc tuyến tính có chân PROG; một điện trở từ chân này xuống GND đặt dòng sạc. Hai ví dụ phổ biến (cần kiểm tra công thức chính xác trong datasheet của hãng khi dùng):</p>
+<ul>
+<li><strong>MCP73831</strong> (Microchip): <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>R</mi><mi>E</mi><mi>G</mi></mrow></msub><mo>=</mo><mn>1000</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext><mi>/</mi><msub><mi>R</mi><mrow><mi>P</mi><mi>R</mi><mi>O</mi><mi>G</mi></mrow></msub></mrow><annotation encoding="application/x-tex">I_{REG} = 1000\ \text{V}/R_{PROG}</annotation></semantics></math>. Với dòng 500 mA, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mrow><mi>P</mi><mi>R</mi><mi>O</mi><mi>G</mi></mrow></msub><mo>=</mo><mn>1000</mn><mi>/</mi><mn>0,5</mn><mo>=</mo><mn>2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_{PROG} = 1000/0{,}5 = 2\ \text{k}\Omega</annotation></semantics></math>.</li>
+<li><strong>TP4056</strong> (nhiều hãng sản xuất, rất phổ biến trên module rẻ tiền): <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mrow><mi>B</mi><mi>A</mi><mi>T</mi></mrow></msub><mo>=</mo><mn>1200</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext><mi>/</mi><msub><mi>R</mi><mrow><mi>P</mi><mi>R</mi><mi>O</mi><mi>G</mi></mrow></msub></mrow><annotation encoding="application/x-tex">I_{BAT} = 1200\ \text{V}/R_{PROG}</annotation></semantics></math>. Với dòng 500 mA, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mrow><mi>P</mi><mi>R</mi><mi>O</mi><mi>G</mi></mrow></msub><mo>=</mo><mn>1200</mn><mi>/</mi><mn>0,5</mn><mo>=</mo><mn>2,4</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_{PROG} = 1200/0{,}5 = 2{,}4\ \text{k}\Omega</annotation></semantics></math>; với 1 A, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mrow><mi>P</mi><mi>R</mi><mi>O</mi><mi>G</mi></mrow></msub><mo>=</mo><mn>1,2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_{PROG} = 1{,}2\ \text{k}\Omega</annotation></semantics></math>.</li>
+</ul>
+<div class="callout tip"><span class="callout-tag">Quy tắc</span><p>Quy tắc chọn dòng sạc: không vượt 0,5C đến 1C cho pin thông thường; nhiều pin dung lượng nhỏ khuyến nghị 0,5C hoặc thấp hơn. Luôn đọc thông số “dòng sạc tiêu chuẩn” và “dòng sạc tối đa” trong datasheet của chính cell bạn dùng, không dựa vào con số chung.</p></div>
+<p>Nguồn vào cũng phải đủ dòng: dòng sạc cộng dòng tải thiết bị không được vượt khả năng cấp của cổng USB (thường 500 mA ở chuẩn USB 2.0 cơ bản). Và điện áp vào tối thiểu phải cao hơn điện áp pin đầy cộng điện áp dropout của IC: ví dụ <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4,2</mn><mo>+</mo><mn>0,3</mn><mo>=</mo><mn>4,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">4{,}2 + 0{,}3 = 4{,}5\ \text{V}</annotation></semantics></math> với IC có dropout khoảng 300 mV (giá trị minh họa, cần kiểm tra datasheet). Vào quá cao (ví dụ 5,25 V đỉnh của cổng USB) làm tăng tổn hao nhiệt, nên cần tính ở điều kiện đó.</p>
+</section>
+<section id="a3-tính-tổn-hao-nhiệt-ở-từng-giai-đoạn" class="level2 ">
+<h2>3. Tính tổn hao nhiệt ở từng giai đoạn</h2>
+<p>Với nguồn 5 V và dòng CC 500 mA, công suất IC phải tỏa phụ thuộc vào điện áp pin:</p>
+<div class="tablewrap"><table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>B</mi><mi>A</mi><mi>T</mi></mrow></msub><annotation encoding="application/x-tex">V_{BAT}</annotation></semantics></math></th>
+<th><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>−</mo><msub><mi>V</mi><mrow><mi>B</mi><mi>A</mi><mi>T</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mn>0,5</mn></mrow><annotation encoding="application/x-tex">P = (5 - V_{BAT}) \times 0{,}5</annotation></semantics></math></th>
+<th>Hiệu suất sạc <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>B</mi><mi>A</mi><mi>T</mi></mrow></msub><mi>/</mi><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub></mrow><annotation encoding="application/x-tex">V_{BAT}/V_{IN}</annotation></semantics></math></th>
+<th>ΔT với 60 °C/W</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>3,0 V</td>
+<td>1,00 W</td>
+<td>60%</td>
+<td>60 °C</td>
+</tr>
+<tr class="even">
+<td>3,3 V</td>
+<td>0,85 W</td>
+<td>66%</td>
+<td>51 °C</td>
+</tr>
+<tr class="odd">
+<td>3,7 V</td>
+<td>0,65 W</td>
+<td>74%</td>
+<td>39 °C</td>
+</tr>
+<tr class="even">
+<td>4,0 V</td>
+<td>0,50 W</td>
+<td>80%</td>
+<td>30 °C</td>
+</tr>
+<tr class="odd">
+<td>4,2 V</td>
+<td>0,40 W</td>
+<td>84%</td>
+<td>24 °C</td>
+</tr>
+</tbody>
+</table></div>
+<p>Trường hợp tồi nhất là khi pin vừa ra khỏi pre-charge (khoảng 3,0 V) và nguồn vào ở điện áp cao nhất: với 5,25 V, công suất là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>5,25</mn><mo>−</mo><mn>3,0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mn>0,5</mn><mo>=</mo><mn>1,125</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">(5{,}25 - 3{,}0) \times 0{,}5 = 1{,}125\ \text{W}</annotation></semantics></math>, tăng nhiệt khoảng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1,125</mn><mo>×</mo><mn>60</mn><mo>=</mo><mn>67,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">°C</mtext></mrow><annotation encoding="application/x-tex">1{,}125 \times 60 = 67{,}5\ \text{°C}</annotation></semantics></math>. Cộng với nhiệt độ môi trường 40 °C (thiết bị trong túi hay trong xe), mối nối đạt hơn 100 °C.</p>
+<p>Hệ số 60 °C/W là giá trị giả định cho gói nhỏ có đồng tản nhiệt trên PCB; <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>θ</mi><mi>J</mi><mi>A</mi></mrow></msub><annotation encoding="application/x-tex">R_{\theta JA}</annotation></semantics></math> thực tế phụ thuộc gói, diện tích đồng và luồng không khí, cần kiểm tra trong datasheet. Phần lớn IC sạc tuyến tính có <strong>điều tiết nhiệt</strong> (thermal regulation): khi mối nối chạm ngưỡng (thường khoảng 100 đến 120 °C, cần kiểm tra), IC tự giảm dòng sạc để giữ nhiệt độ. Đây là cơ chế bảo vệ tốt, nhưng cũng có nghĩa thiết bị sạc chậm hơn dự tính khi nóng.</p>
+<figure class="fig"><svg viewBox="0 0 760 310" role="img" aria-label="Công suất tỏa nhiệt trong IC sạc tuyến tính theo điện áp pin" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="100" y1="250" x2="700" y2="250" class="ln" marker-end="url(#arr)"/><line x1="100" y1="250" x2="100" y2="20" class="ln" marker-end="url(#arr)"/><text x="700" y="270" class="tm" text-anchor="end"></text><text x="108" y="24" class="tm">P (W)</text><text x="700" y="292" class="tm" text-anchor="end">V<tspan class="sub">BAT</tspan> (V)</text><line x1="100" y1="250" x2="100" y2="256" class="ln"/><text x="100" y="272" class="tm" text-anchor="middle">3,0</text><line x1="240" y1="250" x2="240" y2="256" class="ln"/><text x="240" y="272" class="tm" text-anchor="middle">3,3</text><line x1="380" y1="250" x2="380" y2="256" class="ln"/><text x="380" y="272" class="tm" text-anchor="middle">3,6</text><line x1="520" y1="250" x2="520" y2="256" class="ln"/><text x="520" y="272" class="tm" text-anchor="middle">3,9</text><line x1="660" y1="250" x2="660" y2="256" class="ln"/><text x="660" y="272" class="tm" text-anchor="middle">4,2</text><line x1="94" y1="202" x2="100" y2="202" class="ln"/><text x="88" y="206" class="tm" text-anchor="end">0,5</text><line x1="100" y1="202" x2="690" y2="202" class="grid"/><line x1="94" y1="155" x2="100" y2="155" class="ln"/><text x="88" y="159" class="tm" text-anchor="end">1,0</text><line x1="100" y1="155" x2="690" y2="155" class="grid"/><line x1="94" y1="108" x2="100" y2="108" class="ln"/><text x="88" y="112" class="tm" text-anchor="end">1,5</text><line x1="100" y1="108" x2="690" y2="108" class="grid"/><line x1="94" y1="60" x2="100" y2="60" class="ln"/><text x="88" y="64" class="tm" text-anchor="end">2,0</text><line x1="100" y1="60" x2="690" y2="60" class="grid"/><rect x="100" y="41" width="590" height="114" class="fl-wr" style="opacity:.10;stroke:none"/><line x1="100" y1="155" x2="690" y2="155" class="wr dash"/><text x="104" y="149" class="twr b">giới hạn ≈ 1,0 W (T<tspan class="sub">A</tspan> 40 °C, T<tspan class="sub">J</tspan> 100 °C, 60 °C/W)</text><text x="104" y="46" class="twr">IC điều tiết nhiệt: tự giảm dòng sạc</text><path d="M100,155 L660,212" class="a3 thick"/><path d="M100,60 L660,174" class="wr thick"/><text x="333" y="222" class="ta3 b">500 mA: 1,00 → 0,40 W</text><text x="230" y="70" class="twr b">1 A: 2,00 → 0,80 W</text><text x="20" y="296" class="tm">V<tspan class="sub">IN</tspan> = 5 V, P = (V<tspan class="sub">IN</tspan> − V<tspan class="sub">BAT</tspan>) × I<tspan class="sub">CHG</tspan>; số liệu θ<tspan class="sub">JA</tspan> và nhiệt độ là giả định minh họa</text></svg><figcaption>Hình 2. Công suất IC sạc tuyến tính phải tỏa ra theo điện áp pin, với nguồn 5 V. Pin càng thấp áp, nhiệt càng nhiều; sạc 1 A vượt giới hạn nhiệt ở gần như cả dải.</figcaption></figure>
+<p>Cách giảm nhiệt:</p>
+<ul>
+<li>Hạ dòng sạc khi không cần sạc nhanh.</li>
+<li>Đặt một điện trở nối tiếp nhỏ ở nguồn vào để chia bớt nhiệt ra ngoài IC (ví dụ hạ điện áp thêm 0,3 V ở 500 mA cần 0,6 Ω và tiêu thụ 0,15 W trên điện trở đó); cách này giảm nhiệt trên IC nhưng làm điện áp vào tối thiểu cao hơn, cần cân nhắc.</li>
+<li>Dùng IC sạc đóng cắt (switching) cho dòng lớn: hiệu suất cao hơn, nhưng phức tạp hơn và có nhiễu đóng cắt.</li>
+<li>Tăng diện tích đồng quanh chân tản nhiệt (exposed pad) của IC, nối nhiều via xuống lớp GND.</li>
+</ul>
+</section>
+<section id="a3-cảm-biến-nhiệt-độ-pin-ntc" class="level2 ">
+<h2>4. Cảm biến nhiệt độ pin (NTC)</h2>
+<p>Pin lithium không được sạc khi quá lạnh (dưới 0 °C có nguy cơ mạ lithium kim loại lên cực âm, rất nguy hiểm) hay quá nóng (trên khoảng 45 °C). Nhiều IC sạc có chân TS để nối một điện trở NTC gắn sát pin và tự ngừng sạc ngoài khoảng cho phép.</p>
+<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ NTC 10 kΩ ở 25 °C với hệ số B = 3380 K (giá trị phổ biến, cần xem datasheet của NTC đã chọn): điện trở tính theo công thức <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>=</mo><msub><mi>R</mi><mn>25</mn></msub><mo>×</mo><msup><mi>e</mi><mrow><mi>B</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>T</mi><mo>−</mo><mn>1</mn><mi>/</mi><msub><mi>T</mi><mn>25</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">R = R_{25} \times e^{B(1/T - 1/T_{25})}</annotation></semantics></math>:</p></div>
+<ul>
+<li>0 °C: khoảng 28,2 kΩ</li>
+<li>10 °C: khoảng 18,2 kΩ</li>
+<li>25 °C: 10,0 kΩ</li>
+<li>45 °C: khoảng 4,9 kΩ</li>
+<li>60 °C: khoảng 3,0 kΩ</li>
+</ul>
+<p>IC so sánh điện áp chân TS với các ngưỡng nội bộ, nên bạn cần tuân đúng sơ đồ NTC và điện trở kéo trong datasheet chính xác của IC, không tự chọn tùy ý. Nếu không dùng NTC, nhiều IC yêu cầu nối chân TS vào một điện trở cố định để IC coi là “nhiệt độ bình thường”; không để chân hở.</p>
+</section>
+<section id="a3-chia-sẻ-tải-và-các-lớp-bảo-vệ" class="level2 ">
+<h2>5. Chia sẻ tải và các lớp bảo vệ</h2>
+<section id="a3-vừa-sạc-vừa-chạy-thiết-bị" class="level3">
+<h3>Vừa sạc vừa chạy thiết bị</h3>
+<p>Nếu thiết bị nối trực tiếp vào pin, tải hút một phần dòng sạc. Ví dụ dòng sạc đặt 500 mA, tải đang lấy 300 mA, thì pin chỉ nhận 200 mA. Ở giai đoạn CV, khi dòng vào pin vốn chỉ vài chục mA, tải còn lấn át dòng này, dòng pin xuống dưới ngưỡng kết thúc rồi IC dừng sạc sớm, hoặc dòng pin có thể bị âm làm pin xả khi tải đột ngột. Cách tốt hơn là mạch <strong>power path</strong>: dùng P-MOSFET hoặc IC power-path để thiết bị cấp từ nguồn vào khi có nguồn, và chỉ lấy từ pin khi không có nguồn.</p>
+</section>
+<section id="a3-bảo-vệ-pin" class="level3">
+<h3>Bảo vệ pin</h3>
+<p>IC sạc chỉ bảo vệ chiều sạc. Pin thật cần thêm bảo vệ cho chiều xả và ngắn mạch. Với một cell, mạch phổ biến là IC bảo vệ (ví dụ DW01 hoặc tương đương) cùng hai MOSFET (ví dụ FS8205) nối tiếp trên đường GND; bộ này cắt khi:</p>
+<ul>
+<li>quá áp (khoảng 4,25 V đến 4,3 V),</li>
+<li>quá xả (thường khoảng 2,4 V đến 3,0 V tùy IC),</li>
+<li>quá dòng, ngắn mạch.</li>
+</ul>
+<p>Nhiều pin bán sẵn đã tích hợp mạch này (gọi là pin có PCM hoặc có bảo vệ), nhưng pin trần thì không. Cần kiểm tra cell bạn dùng và datasheet các IC này vì thông số khác nhau theo biến thể.</p>
+</section>
+<section id="a3-các-bảo-vệ-khác-ở-phía-vào" class="level3">
+<h3>Các bảo vệ khác ở phía vào</h3>
+<ul>
+<li><strong>Ngược cực và quá áp đầu vào</strong>: dùng diode, P-MOSFET hoặc TVS như trong bài bảo vệ ngược cực ở tuần 1.</li>
+<li><strong>Tụ</strong>: tụ vào 1 µF đến 4,7 µF và tụ ra 4,7 µF đến 10 µF gần chân IC (giá trị thật theo datasheet); sạc có thể mất ổn định nếu tụ không đúng loại.</li>
+<li><strong>Dây nối pin</strong>: dây đủ tiết diện cho dòng, và đầu nối không dễ cắm ngược.</li>
+</ul>
+<figure class="fig"><svg viewBox="0 0 760 330" role="img" aria-label="Sơ đồ khối mạch sạc pin lithium: bảo vệ vào, IC sạc, pin, NTC và đường cấp tải" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="50" width="120" height="70" rx="10" class="a3 fl-soft"/><text x="80.0" y="82.0" class="tx b" text-anchor="middle">USB 5 V</text><text x="80.0" y="101.0" class="tm" text-anchor="middle">cáp, nguồn</text><line x1="140" y1="85" x2="170" y2="85" class="ln" marker-end="url(#arr)"/><rect x="170" y="50" width="150" height="70" rx="10" class="a3 fl-soft"/><text x="245.0" y="82.0" class="tx b" text-anchor="middle">Bảo vệ vào</text><text x="245.0" y="101.0" class="tm" text-anchor="middle">TVS, diode/FET</text><line x1="320" y1="85" x2="360" y2="85" class="ln" marker-end="url(#arr)"/><rect x="360" y="40" width="160" height="90" rx="10" class="a3 fl-soft"/><text x="440.0" y="82.0" class="tx b" text-anchor="middle">IC sạc tuyến tính</text><text x="440.0" y="101.0" class="tm" text-anchor="middle">CC-CV, kết thúc</text><line x1="520" y1="85" x2="560" y2="85" class="ln" marker-end="url(#arr)"/><rect x="560" y="40" width="180" height="90" rx="10" class="a3 fl-soft"/><text x="650.0" y="82.0" class="tx b" text-anchor="middle">Pin Li-ion 1 cell</text><text x="650.0" y="101.0" class="tm" text-anchor="middle">DW01 + 2 MOSFET</text><line x1="400" y1="130" x2="400" y2="180" class="ln"/><rect x="384" y="180" width="32" height="56" rx="4" class="ln fl-bg"/><text x="400" y="213" class="tx b" text-anchor="middle">R</text><text x="428" y="200" class="tm">PROG</text><text x="428" y="218" class="tm">2 kΩ / 500 mA</text><line x1="400" y1="236" x2="400" y2="262" class="ln"/><line x1="386" y1="262" x2="414" y2="262" class="ln thick"/><line x1="391" y1="268" x2="409" y2="268" class="ln"/><line x1="396" y1="274" x2="404" y2="274" class="ln"/><line x1="480" y1="130" x2="480" y2="156" class="ln"/><line x1="480" y1="156" x2="620" y2="156" class="ln dash"/><text x="486" y="150" class="tm">TS</text><rect x="604" y="156" width="32" height="40" rx="4" class="a3 fl-soft"/><text x="620" y="181" class="ta3 b" text-anchor="middle">NTC</text><line x1="620" y1="130" x2="620" y2="156" class="mu"/><text x="590" y="214" class="tm" text-anchor="middle">gắn sát pin</text><text x="590" y="230" class="tm" text-anchor="middle">sạc 0 đến 45 °C</text><rect x="40" y="200" width="170" height="70" rx="10" class="a2 fl-soft"/><text x="125.0" y="232.0" class="tx b" text-anchor="middle">Tải thiết bị</text><text x="125.0" y="251.0" class="tm" text-anchor="middle">qua power path</text><path d="M340,85 L340,182 L125,182 L125,200" class="a2 thick" fill="none" marker-end="url(#arr)"/><text x="150" y="150" class="ta2 b">cấp tải trực tiếp</text><text x="150" y="166" class="ta2">khi có nguồn vào</text><path d="M670,130 L670,300 L180,300 L180,270" class="tip thick" fill="none" marker-end="url(#arr)"/><text x="420" y="320" class="ttip b" text-anchor="middle">khi mất nguồn vào: tải lấy từ pin</text></svg><figcaption>Hình 3. Sơ đồ khối: bảo vệ vào, IC sạc tuyến tính với điện trở PROG và NTC, pin có mạch bảo vệ, và power path để cấp tải riêng.</figcaption></figure>
+</section>
+</section>
+<section id="a3-an-toàn-pin-lithium" class="level2 ">
+<h2>6. An toàn pin lithium</h2>
+<p>Pin lithium có thể bốc cháy hoặc nổ khi hỏng cơ khí, ngắn mạch, sạc quá áp hoặc sạc ở nhiệt độ sai. Các quy tắc cứng:</p>
+<ul>
+<li>Không sạc pin đã phồng, móp, hở hoặc đã bị xả quá sâu và nằm ở điện áp rất thấp (dưới khoảng 2 V) trong thời gian dài.</li>
+<li>Không sạc pin ở dưới 0 °C hoặc trên khoảng 45 °C (cần xác nhận lại trong datasheet cell).</li>
+<li>Không để pin ngắn mạch kể cả khi thử mạch: luôn dùng cầu chì hoặc nguồn có hạn dòng khi thử lần đầu.</li>
+<li>Sạc thử có người giám sát, đặt trên bề mặt không cháy, xa vật dễ cháy.</li>
+<li>Thiết bị bán ra phải qua thử nghiệm an toàn pin theo quy định áp dụng (ví dụ UN 38.3 cho vận chuyển, IEC 62133 cho pin); bài này chỉ nói về thiết kế mạch ở mức điện tử.</li>
+</ul>
+</section>
+<section id="a3-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
+<h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
+<ul>
+<li>Đặt dòng sạc theo dòng tối đa của IC thay vì theo dòng tiêu chuẩn của cell.</li>
+<li>Bỏ qua tổn hao nhiệt ở lúc pin thấp và nguồn vào cao, IC vào điều tiết nhiệt thường xuyên.</li>
+<li>Để chân NTC hở hoặc nối tắt tùy ý, IC báo lỗi hoặc không bảo vệ.</li>
+<li>Dùng pin trần không có mạch bảo vệ chiều xả, trong thiết bị có thể xả sâu.</li>
+<li>Nối tải thẳng vào pin vừa sạc vừa chạy, làm IC không kết thúc sạc đúng.</li>
+<li>Dùng tụ điện phân hoặc tụ gốm sai giá trị với IC cần ổn định.</li>
+<li>Dùng module TP4056 rẻ tiền làm sản phẩm bán ra mà không kiểm tra chất lượng, nhãn mác và an toàn.</li>
+<li>Không có cầu chì/PTC ở phía pin.</li>
+</ul>
+</section>
+<section id="a3-tổng-kết" class="level2 summary">
+<h2>Tổng kết</h2>
+<ul>
+<li>Pin lithium sạc theo ba giai đoạn pre-charge, CC, CV; kết thúc khi dòng giảm xuống khoảng 10% dòng đặt.</li>
+<li>Dòng sạc đặt bằng một điện trở chân PROG (ví dụ 2 kΩ cho 500 mA với MCP73831, 2,4 kΩ cho 500 mA với TP4056), và phải theo thông số của cell.</li>
+<li>IC sạc tuyến tính tỏa nhiệt <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>V</mi><mrow><mi>I</mi><mi>N</mi></mrow></msub><mo>−</mo><msub><mi>V</mi><mrow><mi>B</mi><mi>A</mi><mi>T</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mi>I</mi></mrow><annotation encoding="application/x-tex">P = (V_{IN} - V_{BAT}) \times I</annotation></semantics></math>: ở 5 V/500 mA, tồi nhất khoảng 1 W khi pin 3,0 V, tăng nhiệt khoảng 60 °C với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mrow><mi>θ</mi><mi>J</mi><mi>A</mi></mrow></msub><mo>=</mo><mn>60</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">°C/W</mtext></mrow><annotation encoding="application/x-tex">R_{\theta JA} = 60\ \text{°C/W}</annotation></semantics></math>.</li>
+<li>Dùng NTC để cấm sạc ngoài khoảng 0 đến 45 °C; không để chân TS hở.</li>
+<li>IC sạc không thay thế mạch bảo vệ pin: cần thêm bảo vệ quá xả, quá dòng, ngắn mạch.</li>
+</ul>
+</section>
+<section id="a3-gợi-ý-đọc-tiếp" class="level2 next">
+<h2>Gợi ý đọc tiếp</h2>
+<ul>
+<li>IC sạc đóng cắt và power path cho dòng sạc từ 1 A trở lên.</li>
+<li>Đo dòng sạc bằng điện trở shunt (xem bài đo dòng tuần trước).</li>
+<li>Thiết kế mạch đo mức pin (fuel gauge) và ước tính dung lượng còn lại.</li>
+</ul>
+</section>
+<section id="a3-nguồn-tham-khảo" class="level2 refs">
+<h2>Nguồn tham khảo</h2>
+<ul>
+<li>Datasheet MCP73831/2 (Microchip) và TP4056 (các hãng như NanJing Top Power): cần kiểm tra lại công thức đặt dòng, dropout và ngưỡng nhiệt trong bản mới nhất.</li>
+<li>Datasheet các IC bảo vệ pin một cell (DW01 và họ tương đương) và MOSFET đôi (FS8205 hoặc tương đương): cần kiểm tra ngưỡng bảo vệ theo từng biến thể.</li>
+<li>Tài liệu hướng dẫn thiết kế pin Li-ion của các hãng cell (Panasonic, Samsung SDI, LG Energy Solution…): đọc phần dòng sạc tiêu chuẩn, nhiệt độ sạc, điện áp sạc.</li>
+</ul>
+</section>
+</div>
+  <a class="totop" href="#top">↑ Về đầu trang</a>
+</article></main>
+</div>
+<footer class="foot">Blog phần cứng · Tuần 3 · 26/10/2026 · Hình minh họa là sơ đồ nguyên lý, số liệu thật lấy theo datasheet linh kiện cụ thể.</footer>
+<script>
+(function(){
+  var bar=document.getElementById('bar');
+  function onScroll(){var h=document.documentElement;var p=h.scrollTop/(h.scrollHeight-h.clientHeight||1);bar.style.width=(p*100)+'%';}
+  document.addEventListener('scroll',onScroll,{passive:true});onScroll();
+  var links=[].slice.call(document.querySelectorAll('.toc ol a'));
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(l){l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id);});}});},{rootMargin:'-20% 0px -70% 0px'});
+    links.forEach(function(l){var t=document.getElementById(l.getAttribute('href').slice(1));if(t)io.observe(t);});
+  }
+})();
+</script>
+</body>
+</html>
