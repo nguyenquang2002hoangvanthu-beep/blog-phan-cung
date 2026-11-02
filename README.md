@@ -6,3 +6,4 @@ Blog kỹ thuật phần cứng tiếng Việt: điện tử cơ bản, điện 
 - Tuần 12/10/2026: [tuan-2026-10-12](https://nguyenquang2002hoangvanthu-beep.github.io/blog-phan-cung/tuan-2026-10-12/)
 - Tuần 19/10/2026: [tuan-2026-10-19](https://nguyenquang2002hoangvanthu-beep.github.io/blog-phan-cung/tuan-2026-10-19/)
 - Tuần 26/10/2026: [tuan-2026-10-26](https://nguyenquang2002hoangvanthu-beep.github.io/blog-phan-cung/tuan-2026-10-26/)
+- Tuần 02/11/2026: [tuan-2026-11-02](https://nguyenquang2002hoangvanthu-beep.github.io/blog-phan-cung/tuan-2026-11-02/)
