@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog phần cứng</title>
+<meta property="og:title" content="Blog phần cứng">
+<meta name="description" content="Ba bài kỹ thuật phần cứng tuần 9/11/2026: bring-up board mới lần đầu, mặt phẳng GND và stackup 4 lớp, và op-amp khuếch đại đảo, không đảo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>:root{
+  --bg:#f6f5f1; --paper:#ffffff; --ink:#1b1f24; --muted:#5d6670; --line:#e3e1da;
+  --a1:#0f8b8d; --a1-soft:#e2f3f2; --a2:#c76a12; --a2-soft:#fbeedd; --a3:#6b4fc8; --a3-soft:#ece8fb;
+  --warn:#c9372c; --warn-soft:#fbe7e4; --tip:#2f7d32; --tip-soft:#e5f2e3;
+  --why:#4a5bd0; --why-soft:#e8eafb;
+  --hero:#12161c; --hero-ink:#f4f1ea; --grid:rgba(255,255,255,.06);
+  --pcb:#e3efe4; --cu:#e9c79a; --part:#ffffff; --ic:#2a3038; --ic-ink:#ffffff;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1216; --paper:#171b21; --ink:#e7e9ec; --muted:#9aa4ae; --line:#2a3038;
+  --a1:#3cc4c2; --a1-soft:#11302f; --a2:#f0a24d; --a2-soft:#3a2a17; --a3:#b39cff; --a3-soft:#262040;
+  --warn:#ff7a6b; --warn-soft:#3a1d1a; --tip:#7fcf84; --tip-soft:#18301a;
+  --why:#9aa6ff; --why-soft:#1f2342;
+  --hero:#0a0c10; --pcb:#18281b; --cu:#7a5a33; --part:#262c34; --ic:#3a424c;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.3); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f1216; --paper:#171b21; --ink:#e7e9ec; --muted:#9aa4ae; --line:#2a3038;
+  --a1:#3cc4c2; --a1-soft:#11302f; --a2:#f0a24d; --a2-soft:#3a2a17; --a3:#b39cff; --a3-soft:#262040;
+  --warn:#ff7a6b; --warn-soft:#3a1d1a; --tip:#7fcf84; --tip-soft:#18301a;
+  --why:#9aa6ff; --why-soft:#1f2342;
+  --hero:#0a0c10; --pcb:#18281b; --cu:#7a5a33; --part:#262c34; --ic:#3a424c; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.75 "Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
+a{color:inherit}
+.progress{position:fixed;top:0;left:0;right:0;height:3px;z-index:50}
+#bar{height:100%;width:0;background:linear-gradient(90deg,var(--a1),var(--a2),var(--a3))}
+
+/* hero */
+.hero{position:relative;background:var(--hero);color:var(--hero-ink);overflow:hidden}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px;mask-image:radial-gradient(ellipse at 70% 20%,#000 30%,transparent 75%)}
+.hero-inner{position:relative;max-width:1120px;margin:0 auto;padding:72px 24px 56px}
+.kicker{font:600 13px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:#9fb3c0;margin:0 0 18px}
+.hero h1{font-size:clamp(30px,5vw,52px);line-height:1.15;margin:0 0 18px;font-weight:800;max-width:900px;letter-spacing:-.01em}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,#3cc4c2,#f0a24d,#b39cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-sub{max-width:680px;color:#c4cad1;margin:0 0 36px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.card{display:flex;flex-direction:column;gap:8px;text-decoration:none;padding:22px 22px 18px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-top:4px solid var(--a1);transition:transform .2s,background .2s}
+.card.a2{border-top-color:var(--a2)}
+.card:hover{transform:translateY(-3px);background:rgba(255,255,255,.09)}
+.card strong{font-size:20px;line-height:1.35}
+.card-num,.card-meta{font:500 13px/1.4 "JetBrains Mono",monospace;color:#9fb3c0}
+.card-go{margin-top:auto;font-weight:600;color:#3cc4c2}.card.a2 .card-go{color:#f0a24d}
+
+/* layout */
+.layout{max-width:1120px;margin:0 auto;padding:40px 24px;display:grid;grid-template-columns:240px minmax(0,1fr);gap:40px}
+.toc{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);overflow:auto;font-size:14px;line-height:1.5}
+.toc-head{font:700 12px/1 "JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+.toc-group{margin-bottom:20px}
+.toc-title{display:block;font-weight:700;text-decoration:none;color:var(--a1);margin-bottom:6px}
+.toc-group.a2 .toc-title{color:var(--a2)}
+.toc ol{list-style:none;margin:0;padding:0 0 0 10px;border-left:2px solid var(--line)}
+.toc ol a{display:block;padding:4px 8px;margin-left:-12px;border-left:2px solid transparent;text-decoration:none;color:var(--muted)}
+.toc ol a:hover{color:var(--ink)}
+.toc ol a.on{color:var(--ink);border-left-color:var(--a1);font-weight:600}
+.toc-group.a2 ol a.on{border-left-color:var(--a2)}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr);padding:24px 16px}.toc{display:none}.hero-inner{padding:48px 16px 40px}}
+
+/* article */
+.post{--acc:var(--a1);--acc-soft:var(--a1-soft);background:var(--paper);border-radius:20px;box-shadow:var(--shadow);margin-bottom:48px;overflow:hidden}
+.post.a2{--acc:var(--a2);--acc-soft:var(--a2-soft)}
+.post-head{padding:40px 48px 28px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--acc-soft),transparent)}
+.post-num{font:700 64px/1 "JetBrains Mono",monospace;color:var(--acc);opacity:.25;margin-bottom:-18px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.chip{font:600 12px/1 "Be Vietnam Pro",sans-serif;padding:7px 11px;border-radius:999px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
+.chip.cat{background:var(--acc);border-color:var(--acc);color:var(--paper)}
+.chip.lvl{color:var(--acc);border-color:var(--acc)}
+.post-title{font-size:clamp(26px,3.6vw,38px);line-height:1.2;margin:0 0 12px;font-weight:800;letter-spacing:-.01em}
+.lede{color:var(--muted);margin:0 0 14px;font-size:18px}
+.tags{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;margin:0;padding:0;font:500 13px/1.4 "JetBrains Mono",monospace;color:var(--acc)}
+.post-body{padding:32px 48px 8px}
+@media (max-width:700px){.post-head{padding:28px 18px 20px}.post-body{padding:20px 18px 4px}.post{border-radius:14px}body{font-size:16px}}
+.post-body>p:first-child{font-size:19px;line-height:1.7}
+.post-body>p:first-child::first-letter{float:left;font-size:3.4em;line-height:.9;font-weight:800;color:var(--acc);margin:6px 10px 0 0}
+.post-body h2{font-size:26px;line-height:1.3;margin:44px 0 14px;padding-top:6px;position:relative;scroll-margin-top:20px}
+.post-body h2::before{content:"";display:block;width:44px;height:4px;border-radius:2px;background:var(--acc);margin-bottom:14px}
+.post-body h3{font-size:20px;margin:30px 0 8px;color:var(--acc);scroll-margin-top:20px}
+.post-body p{margin:0 0 16px}
+.post-body strong{font-weight:700}
+.post-body code{font-family:"JetBrains Mono",monospace;font-size:.9em;background:var(--acc-soft);padding:1px 6px;border-radius:5px}
+.post-body ul,.post-body ol{padding-left:24px;margin:0 0 18px}
+.post-body li{margin:4px 0}
+math[display="block"]{display:block;overflow-x:auto;overflow-y:hidden;margin:18px 0;padding:16px 18px;background:var(--acc-soft);border-left:4px solid var(--acc);border-radius:0 12px 12px 0;font-size:1.12em}
+math{font-family:"Latin Modern Math","STIX Two Math","Cambria Math",math}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:26px 0 30px}
+.stat{padding:16px;border-radius:14px;border:1px solid var(--line);background:var(--paper);position:relative;overflow:hidden}
+.stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc)}
+.stat b{display:block;font:700 26px/1.1 "JetBrains Mono",monospace;color:var(--acc);margin-bottom:6px}
+.stat span{display:block;font-size:13.5px;line-height:1.4;color:var(--muted)}
+
+/* callouts */
+.callout{position:relative;margin:22px 0;padding:18px 20px 14px;border-radius:14px;background:var(--why-soft);border:1px solid transparent}
+.callout p{margin:0 0 6px}
+.callout-tag{display:inline-block;font:700 11px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:6px;margin-bottom:10px;background:var(--why);color:var(--paper)}
+.callout.warn{background:var(--warn-soft)}.callout.warn .callout-tag{background:var(--warn)}
+.callout.tip{background:var(--tip-soft)}.callout.tip .callout-tag{background:var(--tip)}
+.callout.note{background:var(--acc-soft)}.callout.note .callout-tag{background:var(--acc)}
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:18px 0 24px;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th{background:var(--acc-soft);text-align:left;font-weight:700}
+th,td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+/* special sections */
+section.basics{background:var(--bg);border-radius:14px;padding:4px 22px 8px;margin:28px 0}
+section.basics h2{font-size:20px;margin-top:18px}
+section.pitfalls ul{list-style:none;padding:0;display:grid;gap:10px}
+section.pitfalls li{padding:12px 14px 12px 46px;border-radius:12px;background:var(--warn-soft);position:relative;margin:0}
+section.pitfalls li::before{content:"✕";position:absolute;left:14px;top:11px;width:22px;height:22px;border-radius:50%;background:var(--warn);color:var(--paper);font:700 12px/22px sans-serif;text-align:center}
+section.summary{background:var(--hero);color:var(--hero-ink);border-radius:16px;padding:6px 26px 14px;margin:40px 0 24px}
+section.summary h2{color:var(--hero-ink)}
+section.summary ul{list-style:none;padding:0;counter-reset:s}
+section.summary li{counter-increment:s;padding:8px 0 8px 44px;position:relative;border-bottom:1px solid rgba(255,255,255,.1)}
+section.summary li:last-child{border:0}
+section.summary li::before{content:counter(s,decimal-leading-zero);position:absolute;left:0;top:8px;font:700 18px/1.5 "JetBrains Mono",monospace;color:var(--acc)}
+section.next ul{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+section.next li{margin:0;padding:16px;border:1px dashed var(--acc);border-radius:12px;font-weight:600;line-height:1.45}
+section.next li::before{content:"Đọc tiếp →";display:block;font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--acc);margin-bottom:8px}
+section.refs{font-size:14.5px;color:var(--muted);border-top:1px solid var(--line);margin-top:36px}
+section.refs h2{font-size:18px}
+section.refs h2::before{display:none}
+
+/* figures */
+.fig{margin:28px 0;padding:18px 18px 12px;border:1px solid var(--line);border-radius:16px;background:var(--paper)}
+.fig svg{display:block;width:100%;height:auto;font-family:"Be Vietnam Pro",system-ui,sans-serif}
+.fig figcaption{font-size:14px;line-height:1.55;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.fig svg text{font-size:13px}
+.fig .b{font-weight:700}
+.fig .sub{font-size:9px;baseline-shift:sub}
+.fig .tx{fill:var(--ink)}.fig .tm{fill:var(--muted)}
+.fig .ta1{fill:var(--a1)}.fig .ta2{fill:var(--a2)}.fig .twr{fill:var(--warn)}
+.fig .ln{stroke:var(--ink);stroke-width:1.6;fill:none}
+.fig .mu{stroke:var(--muted);stroke-width:1.2;fill:none}
+.fig .a1{stroke:var(--a1);stroke-width:1.8;fill:none}
+.fig .a2{stroke:var(--a2);stroke-width:1.8;fill:none}
+.fig .wr{stroke:var(--warn);stroke-width:1.8;fill:none}
+.fig .thick{stroke-width:3}
+.fig .dash{stroke-dasharray:5 5}
+.fig .grid{stroke:var(--line);stroke-width:1}
+.fig .fl-ink{fill:var(--ink)}.fig .fl-wr{fill:var(--warn)}.fig .fl-a1{fill:var(--a1)}
+.fig .fl-bg{fill:var(--paper)}
+.fig .fl-soft{fill:var(--acc-soft)}
+.fig .fl-ink2{fill:var(--line)}
+.fig .fl-pcb{fill:var(--pcb)}.fig .fl-cu{fill:var(--cu)}.fig .fl-part{fill:var(--part);stroke:var(--muted);stroke-width:1}
+.fig .fl-ic{fill:var(--ic)}.fig .fl-ic~text{}
+.fig .fl-wr2{fill:var(--warn);opacity:.55}
+.fig .via circle{fill:var(--bg);stroke:var(--muted)}
+.fig rect.fl-ic + text, .fig rect.fl-ic + text + text{fill:var(--ic-ink)}
+
+.totop{display:inline-block;margin:8px 48px 32px;font-weight:600;color:var(--acc);text-decoration:none}
+@media (max-width:700px){.totop{margin:8px 18px 24px}}
+.foot{text-align:center;color:var(--muted);font-size:13px;padding:8px 16px 48px}
+main{min-width:0}.post-body{overflow-wrap:anywhere}
+
+.card.a3{border-top-color:var(--a3)}.card.a3 .card-go{color:#b39cff}
+.toc-group.a3 .toc-title{color:var(--a3)}.toc-group.a3 ol a.on{border-left-color:var(--a3)}
+.post.a3{--acc:var(--a3);--acc-soft:var(--a3-soft)}
+.fig .ta3{fill:var(--a3)}.fig .a3{stroke:var(--a3);stroke-width:1.8;fill:none}.fig .fl-a3{fill:var(--a3)}.fig .fl-tip{fill:var(--tip)}.fig .ttip{fill:var(--tip)}
+.post-body blockquote{margin:22px 0;padding:16px 20px;border-radius:14px;background:var(--warn-soft);border-left:5px solid var(--warn)}
+.post-body blockquote p{margin:0}
+.fig .fl-mu{fill:var(--muted)}.fig .fl-a2{fill:var(--a2)}.fig .tip{stroke:var(--tip);stroke-width:1.8;fill:none}
+</style>
+</head>
+<body>
+<div class="progress" aria-hidden="true"><div id="bar"></div></div>
+<header class="hero" id="top">
+  <div class="hero-grid" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <p class="kicker">Blog kỹ thuật phần cứng · Tuần 5 · 09/11/2026</p>
+    <h1>Ba bài tuần này: <em>bring-up board mới</em>, <em>GND, via và stackup 4 lớp</em> và <em>op-amp khuếch đại</em></h1>
+    <p class="hero-sub">Một bài quy trình kiểm tra ngắn mạch và cấp nguồn có hạn dòng cho board mới, một bài về mặt phẳng GND, via và stackup 4 lớp cho mạch hỗn hợp số-analog, và một bài về chọn điện trở, GBW, offset và dòng phân cực của op-amp.</p>
+    <div class="cards"><a class="card a1" href="#a1"><span class="card-num">Bài 01 · Kiểm thử & gỡ lỗi phần cứng</span>
+<strong>Quy trình bring-up board mới lần đầu: kiểm tra ngắn mạch và cấp nguồn có hạn dòng</strong><span class="card-meta">Mức Cơ bản · 9 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a2" href="#a2"><span class="card-num">Bài 02 · Thiết kế PCB & Layout</span>
+<strong>Mặt phẳng GND, via và stackup 4 lớp cho mạch hỗn hợp số-analog</strong><span class="card-meta">Mức Nâng cao · 11 phút đọc</span><span class="card-go">Đọc bài →</span></a><a class="card a3" href="#a3"><span class="card-num">Bài 03 · Mạch analog & đo lường</span>
+<strong>Op-amp khuếch đại đảo và không đảo: chọn điện trở, băng thông GBW, offset và dòng phân cực</strong><span class="card-meta">Mức Trung bình · 10 phút đọc</span><span class="card-go">Đọc bài →</span></a></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="toc" aria-label="Mục lục"><p class="toc-head">Mục lục</p><div class="toc-group a1"><a class="toc-title" href="#a1">Bài 01</a><ol><li><a href="#a1-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a1-soi-mắt-trước-khi-đo-gì-cả">Soi mắt trước khi đo gì cả</a></li><li><a href="#a1-đo-điện-trở-các-đường-nguồn-khi-chưa-cấp-điện">Đo điện trở các đường nguồn khi chưa cấp điện</a></li><li><a href="#a1-cấp-nguồn-có-hạn-dòng-ngưỡng-bao-nhiêu-là-hợp-lý">Cấp nguồn có hạn dòng: ngưỡng bao nhiêu là hợp lý?</a></li><li><a href="#a1-đo-điện-áp-từng-nhánh">Đo điện áp từng nhánh</a></li><li><a href="#a1-kiểm-tra-nhiệt">Kiểm tra nhiệt</a></li><li><a href="#a1-reset-clock-và-chương-trình-đầu-tiên">Reset, clock và chương trình đầu tiên</a></li><li><a href="#a1-cảnh-báo-an-toàn">Cảnh báo an toàn</a></li><li><a href="#a1-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a1-tổng-kết">Tổng kết</a></li><li><a href="#a1-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a1-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a2"><a class="toc-title" href="#a2">Bài 02</a><ol><li><a href="#a2-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a2-vì-sao-4-lớp-tốt-hơn-2-lớp">Vì sao 4 lớp tốt hơn 2 lớp</a></li><li><a href="#a2-trở-kháng-microstrip-vì-sao-đường-tín-hiệu-hẹp-hơn">Trở kháng microstrip: vì sao đường tín hiệu hẹp hơn</a></li><li><a href="#a2-via-điện-cảm-nhỏ-nhưng-không-bỏ-qua-được">Via: điện cảm nhỏ nhưng không bỏ qua được</a></li><li><a href="#a2-tụ-tách-nguồn-và-vị-trí-via">Tụ tách nguồn và vị trí via</a></li><li><a href="#a2-mạch-hỗn-hợp-có-nên-cắt-gnd-không">Mạch hỗn hợp: có nên cắt GND không?</a></li><li><a href="#a2-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a2-tổng-kết">Tổng kết</a></li><li><a href="#a2-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a2-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div><div class="toc-group a3"><a class="toc-title" href="#a3">Bài 03</a><ol><li><a href="#a3-kiến-thức-nền-cần-có">Kiến thức nền cần có</a></li><li><a href="#a3-hai-cấu-hình-cơ-bản">Hai cấu hình cơ bản</a></li><li><a href="#a3-chọn-điện-trở-cho-ví-dụ">Chọn điện trở cho ví dụ</a></li><li><a href="#a3-băng-thông-gbw-và-độ-lợi">Băng thông: GBW và độ lợi</a></li><li><a href="#a3-điện-áp-offset-sai-số-cố-định-bị-nhân-lên">Điện áp offset: sai số cố định bị nhân lên</a></li><li><a href="#a3-dòng-phân-cực-ảnh-hưởng-của-điện-trở-nguồn">Dòng phân cực: ảnh hưởng của điện trở nguồn</a></li><li><a href="#a3-nhiễu-và-độ-ổn-định">Nhiễu và độ ổn định</a></li><li><a href="#a3-nguồn-đơn-và-giới-hạn-ngõ-ra">Nguồn đơn và giới hạn ngõ ra</a></li><li><a href="#a3-lỗi-thường-gặp-kinh-nghiệm-thực-tế">Lỗi thường gặp &amp; kinh nghiệm thực tế</a></li><li><a href="#a3-tổng-kết">Tổng kết</a></li><li><a href="#a3-gợi-ý-đọc-tiếp">Gợi ý đọc tiếp</a></li><li><a href="#a3-nguồn-tham-khảo">Nguồn tham khảo</a></li></ol></div></nav>
+  <main>
+<article id="a1" class="post a1">
+  <header class="post-head">
+    <div class="post-num">Bài 01</div>
+    <div class="chips"><span class="chip cat">Kiểm thử & gỡ lỗi phần cứng</span><span class="chip lvl">Mức Cơ bản</span><span class="chip">⏱ 9 phút đọc</span></div>
+    <h2 class="post-title">Quy trình bring-up board mới lần đầu: kiểm tra ngắn mạch và cấp nguồn có hạn dòng</h2>
+    <p class="lede">Quy trình bring-up board mạch mới lần đầu: soi mắt, đo điện trở nguồn, cấp nguồn có hạn dòng, kiểm tra điện áp từng nhánh, nhiệt, reset và clock, kèm ví dụ số.</p>
+    <ul class="tags"><li>#bring-up</li><li>#kiểm tra board</li><li>#nguồn có hạn dòng</li><li>#ngắn mạch</li><li>#đồng hồ vạn năng</li><li>#thử nguyên mẫu</li></ul>
+  </header>
+  <div class="post-body"><p>Board vừa về từ nhà máy, linh kiện đã gắn xong, và cái cám dỗ lớn nhất là cắm nguồn ngay xem có chạy không. Hầu hết các lần “cháy board lần đầu” đều xảy ra đúng ở khoảnh khắc đó: một ngắn mạch dưới chân linh kiện BGA, một tụ gắn ngược cực, một diode đặt nhầm chiều, rồi nguồn bàn 3 A đẩy hết dòng vào chỗ lỗi. Bài này đưa ra quy trình bring-up từng bước, từ lúc cầm board lên đến lúc vi điều khiển chạy, trong đó mỗi bước chặn một loại lỗi cụ thể và có ví dụ số để bạn đặt ngưỡng dòng cho hợp lý.</p><div class="stats"><div class="stat"><b>146 µF</b><span>tổng điện dung trên đường nguồn cần nạp lúc khởi động</span></div><div class="stat"><b>4,8 ms</b><span>thời gian nạp tụ khi giới hạn dòng 100 mA</span></div><div class="stat"><b>6,6 A</b><span>dòng ngắn mạch qua 0,5 Ω nếu không giới hạn dòng</span></div><div class="stat"><b>5 mW</b><span>công suất tại điểm ngắn mạch khi giới hạn 100 mA</span></div></div>
+<section id="a1-kiến-thức-nền-cần-có" class="level2 basics">
+<h2>Kiến thức nền cần có</h2>
+<ul>
+<li><strong>Bring-up</strong> là quá trình đưa một board mới từ trạng thái “vừa lắp xong” đến “hoạt động đúng chức năng”, đi từ kiểm tra thụ động (không có điện) tới cấp nguồn có kiểm soát, rồi mới đến chạy tín hiệu.</li>
+<li><strong>Nguồn bàn có hạn dòng</strong> (current limit hay CC mode): nguồn giữ điện áp đặt cho đến khi dòng chạm ngưỡng cài, sau đó nó giữ dòng cố định và tự hạ điện áp. Đây là công cụ bảo vệ chính khi bring-up.</li>
+<li>Công suất: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo>=</mo><msup><mi>I</mi><mn>2</mn></msup><mi>R</mi><mo>=</mo><mi>V</mi><mo>×</mo><mi>I</mi></mrow><annotation encoding="application/x-tex">P = I^2 R = V \times I</annotation></semantics></math>. Một ngắn mạch có điện trở nhỏ chỉ tỏa nhiệt nhiều nếu được cấp dòng lớn.</li>
+</ul>
+</section>
+<section id="a1-soi-mắt-trước-khi-đo-gì-cả" class="level2 ">
+<h2>1. Soi mắt trước khi đo gì cả</h2>
+<p>Dành năm phút quan sát board, có kính lúp hoặc kính hiển vi nếu có. Mục đích là bắt các lỗi lắp ráp mà đo điện không phát hiện nhanh:</p>
+<ul>
+<li>Cực tính của tụ điện phân, tụ tantalum, diode và LED đối chiếu với bản vẽ và dấu trên PCB.</li>
+<li>Chiều của IC (chấm đánh dấu chân 1) và các linh kiện có cực.</li>
+<li>Cầu thiếc giữa các chân sát nhau (đặc biệt chân IC bước nhỏ), thiếc hàn dư rơi trên board.</li>
+<li>Linh kiện thiếu, nghiêng, “bia mộ” (tombstone), giá trị điện trở in trên linh kiện có khớp bản vẽ.</li>
+<li>Vết cháy, bẩn flux giữa các chân nguồn.</li>
+</ul>
+<p>Đối chiếu với <strong>BOM</strong> (bảng liệt kê linh kiện) cho các linh kiện quan trọng: mã linh kiện chống nhầm giá trị tụ và điện trở trong nhánh nguồn và đường chia hồi tiếp. Nhầm điện trở chia hồi tiếp là lỗi làm cháy tải điện áp thấp.</p>
+<figure class="fig"><svg viewBox="0 0 760 310" role="img" aria-label="Danh sách kiểm tra soi mắt trên board mới" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="20" width="350" height="270" rx="12" class="fl-pcb"/><rect x="60" y="70" width="90" height="90" rx="6" class="fl-ic"/><circle cx="74" cy="84" r="5" class="fl-wr"/><text x="105" y="122" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">IC</text><rect x="190" y="70" width="60" height="60" rx="30" class="fl-part"/><rect x="190" y="70" width="14" height="60" class="fl-ink2"/><text x="226" y="106" class="tm" text-anchor="middle">+</text><rect x="290" y="90" width="26" height="16" class="fl-cu"/><rect x="322" y="90" width="26" height="16" class="fl-cu"/><rect x="316" y="94" width="10" height="8" class="fl-wr"/><rect x="290" y="170" width="26" height="16" class="fl-cu"/><rect x="322" y="170" width="26" height="16" class="fl-cu"/><rect x="326" y="146" width="10" height="24" rx="2" class="fl-part" transform="rotate(0)"/><rect x="70" y="200" width="70" height="30" rx="4" class="fl-part"/><rect x="118" y="200" width="8" height="30" class="fl-ink2"/><circle cx="75" cy="60" r="11" class="fl-a1"/><text x="75" y="64" class="tx b" text-anchor="middle" style="fill:#fff">1</text><circle cx="206" cy="60" r="11" class="fl-a1"/><text x="206" y="64" class="tx b" text-anchor="middle" style="fill:#fff">2</text><circle cx="322" cy="80" r="11" class="fl-a1"/><text x="322" y="84" class="tx b" text-anchor="middle" style="fill:#fff">3</text><circle cx="336" cy="140" r="11" class="fl-a1"/><text x="336" y="144" class="tx b" text-anchor="middle" style="fill:#fff">4</text><circle cx="105" cy="192" r="11" class="fl-a1"/><text x="105" y="196" class="tx b" text-anchor="middle" style="fill:#fff">5</text><circle cx="410" cy="50" r="11" class="fl-a1"/><text x="410" y="54" class="tx b" text-anchor="middle" style="fill:#fff">1</text><text x="432" y="54" class="tx">Chấm chân 1 của IC đúng</text><circle cx="410" cy="94" r="11" class="fl-a1"/><text x="410" y="98" class="tx b" text-anchor="middle" style="fill:#fff">2</text><text x="432" y="98" class="tx">Tụ điện phân: vạch cực (−) đúng</text><circle cx="410" cy="138" r="11" class="fl-a1"/><text x="410" y="142" class="tx b" text-anchor="middle" style="fill:#fff">3</text><text x="432" y="142" class="tx">Cầu thiếc giữa hai chân sát</text><circle cx="410" cy="182" r="11" class="fl-a1"/><text x="410" y="186" class="tx b" text-anchor="middle" style="fill:#fff">4</text><text x="432" y="186" class="tx">Linh kiện nhỏ dựng đứng (bia mộ)</text><circle cx="410" cy="226" r="11" class="fl-a1"/><text x="410" y="230" class="tx b" text-anchor="middle" style="fill:#fff">5</text><text x="432" y="230" class="tx">Diode/LED: vạch cực đúng</text><text x="410" y="282" class="tm">Đối chiếu thêm với BOM: giá trị linh kiện</text></svg><figcaption>Hình 1. Kiểm tra bằng mắt và đồng hồ trước khi cấp nguồn: chiều linh kiện phân cực, cầu hàn, và điện trở giữa từng đường nguồn với GND.</figcaption></figure>
+</section>
+<section id="a1-đo-điện-trở-các-đường-nguồn-khi-chưa-cấp-điện" class="level2 ">
+<h2>2. Đo điện trở các đường nguồn khi chưa cấp điện</h2>
+<p>Dùng đồng hồ vạn năng, chọn thang đo điện trở hoặc chế độ thử diode. Đặt que đen vào GND, que đỏ lần lượt chạm từng đường nguồn (điểm test nếu có, hoặc đầu tụ lọc).</p>
+<p>Khi tụ lọc còn rỗng, điện trở đo sẽ <strong>tăng dần</strong> vì đồng hồ đang nạp tụ: số đọc nhảy từ thấp lên cao rồi ổn định. Đó là hiện tượng bình thường. Điều cần chú ý là giá trị sau khi ổn định:</p>
+<ul>
+<li><strong>Gần 0 Ω (dưới khoảng 1 Ω)</strong>: ngắn mạch thực sự. Không cấp nguồn. Tìm chỗ ngắn trước.</li>
+<li><strong>Vài chục đến vài trăm Ω</strong>: nghi ngờ; so sánh với mức tải dự kiến. Ví dụ đường 3,3 V có tải dự kiến 60 mA thì điện trở tương đương là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3,3</mn><mi>/</mi><mn>0,06</mn><mo>=</mo><mn>55</mn><mspace width="0.222em"></mspace><mi>Ω</mi></mrow><annotation encoding="application/x-tex">3{,}3/0{,}06 = 55\ \Omega</annotation></semantics></math>; đo ra vài kΩ trở lên là bình thường (trước khi các IC có điện, trở kháng thường rất cao).</li>
+<li><strong>Rất cao hoặc hở mạch</strong>: bình thường với nhánh chỉ có tụ; nếu đường nguồn lẽ ra phải nối tới IC mà hở thì kiểm tra mối hàn, cuộn cảm, cầu chì.</li>
+</ul>
+<p>So sánh với một board đã chạy tốt (nếu có) hoặc giữa hai board mới: nếu một board có đường 3,3 V đo 200 Ω mà board kia 5 kΩ thì board đo 200 Ω có vấn đề.</p>
+<section id="a1-tìm-chỗ-ngắn-mạch" class="level3">
+<h3>Tìm chỗ ngắn mạch</h3>
+<p>Khi có ngắn mạch, các cách khoanh vùng:</p>
+<ul>
+<li>Đo ở nhiều điểm trên cùng đường nguồn: điểm đo thấp nhất gần nơi ngắn nhất, đặc biệt khi dùng đồng hồ có độ phân giải cao (milliohm).</li>
+<li>Cấp dòng nhỏ có kiểm soát (ví dụ 1 A ở 0,3 V) vào đường bị ngắn rồi dùng camera nhiệt, hoặc nhỏ cồn isopropyl lên board để thấy chỗ bay hơi trước.</li>
+<li>Bỏ lần lượt từng linh kiện song song trên đường (tụ lọc nhiều khi là thủ phạm: tụ gốm bị nứt gây ngắn mạch).</li>
+</ul>
+</section>
+</section>
+<section id="a1-cấp-nguồn-có-hạn-dòng-ngưỡng-bao-nhiêu-là-hợp-lý" class="level2 ">
+<h2>3. Cấp nguồn có hạn dòng: ngưỡng bao nhiêu là hợp lý?</h2>
+<p>Cắm nguồn bàn, đặt <strong>điện áp đúng bằng điện áp thiết kế</strong> và <strong>hạn dòng thấp</strong>, rồi tăng dần. Cách đặt ngưỡng:</p>
+<ol type="1">
+<li>Cộng dòng tiêu thụ ở trạng thái nghỉ dự kiến từ datasheet các linh kiện chính. Ví dụ: vi điều khiển 40 mA, cảm biến 5 mA, LED báo 10 mA, dòng tĩnh <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mi>Q</mi></msub><annotation encoding="application/x-tex">I_Q</annotation></semantics></math> của LDO 5 mA: tổng 60 mA.</li>
+<li>Đặt giới hạn bằng khoảng 2 lần tổng đó: 120 mA, chọn làm tròn lên 150 mA.</li>
+<li>Nếu dòng thực chạm trần ngay lập tức (đèn CC sáng), tắt và tìm nguyên nhân, đừng tăng giới hạn “xem thử”.</li>
+</ol>
+<div class="callout why"><span class="callout-tag">Tại sao</span><p>Tại sao dòng thấp lại bảo vệ được board? Giả sử có ngắn mạch 0,5 Ω trên đường 3,3 V:</p></div>
+<ul>
+<li>Nguồn bàn không giới hạn (hoặc giới hạn 3 A): dòng thử cố đạt <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3,3</mn><mi>/</mi><mn>0,5</mn><mo>=</mo><mn>6,6</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">A</mtext></mrow><annotation encoding="application/x-tex">3{,}3/0{,}5 = 6{,}6\ \text{A}</annotation></semantics></math>, bị chặn ở 3 A; công suất trong chỗ ngắn: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mn>3</mn><mn>2</mn></msup><mo>×</mo><mn>0,5</mn><mo>=</mo><mn>4,5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">3^2 \times 0{,}5 = 4{,}5\ \text{W}</annotation></semantics></math>. Đủ để cháy đường mạch nhỏ hoặc làm bong vết đồng.</li>
+<li>Giới hạn 100 mA: điện áp tự sụt về <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,1</mn><mo>×</mo><mn>0,5</mn><mo>=</mo><mn>0,05</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">0{,}1 \times 0{,}5 = 0{,}05\ \text{V}</annotation></semantics></math>; công suất chỉ <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>,</mo><msup><mn>1</mn><mn>2</mn></msup><mo>×</mo><mn>0,5</mn><mo>=</mo><mn>5</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mW</mtext></mrow><annotation encoding="application/x-tex">0{,}1^2 \times 0{,}5 = 5\ \text{mW}</annotation></semantics></math>. Không có gì hỏng.</li>
+</ul>
+<p>Giới hạn dòng thấp biến một ngắn mạch có thể phá hủy thành một ngắn mạch vô hại. Bring-up luôn bắt đầu bằng giới hạn thấp, rồi tăng khi đã quan sát dòng thực tế.</p>
+<section id="a1-dòng-nạp-tụ-khi-khởi-động" class="level3">
+<h3>Dòng nạp tụ khi khởi động</h3>
+<p>Ở khoảnh khắc cấp nguồn, dòng bị chạm trần do tụ lọc đang nạp, dù board không có lỗi. Với tổng điện dung giả định: 20 tụ 100 nF, hai tụ 22 µF và một tụ 100 µF, tổng 146 µF. Thời gian nạp lên 3,3 V với giới hạn 100 mA:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mfrac><mrow><mi>C</mi><mo>×</mo><mi>V</mi></mrow><mi>I</mi></mfrac><mo>=</mo><mfrac><mrow><mn>146</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup><mo>×</mo><mn>3,3</mn></mrow><mrow><mn>0,1</mn></mrow></mfrac><mo>≈</mo><mn>4,8</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">ms</mtext></mrow><annotation encoding="application/x-tex">t = \frac{C \times V}{I} = \frac{146\times10^{-6} \times 3{,}3}{0{,}1} \approx 4{,}8\ \text{ms}</annotation></semantics></math></p>
+<p>Với giới hạn 150 mA là khoảng 3,2 ms. Trong vài ms đó nguồn ở chế độ CC rồi chuyển về CV khi tụ đầy. Nếu nguồn bàn hiển thị CC nhấp nháy rồi ổn định là bình thường; nếu CC kéo dài cả giây thì có vấn đề.</p>
+</section>
+<section id="a1-dây-nối-cũng-sụt-áp" class="level3">
+<h3>Dây nối cũng sụt áp</h3>
+<p>Dùng dây nguồn mảnh, dài sẽ sụt áp trước khi tới board. Dây 22 AWG có điện trở khoảng 0,053 Ω/m; dây đi và về dài 2 m có <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,106</mn><mspace width="0.222em"></mspace><mi>Ω</mi></mrow><annotation encoding="application/x-tex">0{,}106\ \Omega</annotation></semantics></math>. Dòng 0,5 A tạo sụt áp <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,106</mn><mo>×</mo><mn>0,5</mn><mo>≈</mo><mn>53</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">0{,}106 \times 0{,}5 \approx 53\ \text{mV}</annotation></semantics></math>. Với board 3,3 V cần dung sai 5% thì mức này chưa đáng kể, nhưng với dòng vài ampe hoặc rail điện áp thấp thì đáng kể. Dùng dây ngắn, dày, hoặc chế độ cảm biến từ xa (remote sense) của nguồn bàn nếu có.</p>
+<figure class="fig"><svg viewBox="0 0 760 280" role="img" aria-label="Cấp nguồn bàn có hạn dòng cho board mới" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="40" width="160" height="110" rx="10" class="a1 fl-soft"/><text x="100.0" y="92.0" class="tx b" text-anchor="middle">Nguồn bàn</text><text x="100.0" y="111.0" class="tm" text-anchor="middle">3,3 V, giới hạn 150 mA</text><line x1="180" y1="75" x2="250" y2="75" class="ln thick"/><line x1="180" y1="115" x2="250" y2="115" class="ln thick"/><text x="215" y="99" class="tm" text-anchor="middle">dây dày</text><rect x="250" y="40" width="130" height="110" rx="10" class="a1 fl-soft"/><text x="315.0" y="92.0" class="tx b" text-anchor="middle">Board mới</text><text x="315.0" y="111.0" class="tm" text-anchor="middle">nghỉ dự kiến 60 mA</text><text x="20" y="182" class="ta1 b">CC sáng quá vài chục ms: tắt nguồn, tìm nguyên nhân</text><text x="20" y="202" class="tm">dòng nạp tụ: t = C·V/I = 146 µF × 3,3 V / 0,1 A ≈ 4,8 ms</text><line x1="440" y1="240" x2="740" y2="240" class="ln" marker-end="url(#arr)"/><line x1="440" y1="240" x2="440" y2="30" class="ln" marker-end="url(#arr)"/><text x="740" y="260" class="tm" text-anchor="end">t</text><text x="448" y="34" class="tm">I (mA)</text><line x1="440" y1="132" x2="730" y2="132" class="mu dash"/><text x="436" y="136" class="tm" text-anchor="end">150</text><line x1="440" y1="190" x2="730" y2="190" class="mu dash"/><text x="436" y="194" class="tm" text-anchor="end">60</text><path d="M440,240 L470,240 L474,132 L520,132 C540,132 548,190 570,190 L730,190" class="a1 thick" fill="none"/><text x="520" y="122" class="ta1 b">CC: nạp tụ vài ms</text><text x="590" y="182" class="ta1 b" text-anchor="start">dòng nghỉ ≈ 60 mA</text><text x="20" y="262" class="tm">Ngắn mạch 0,5 Ω: giới hạn 100 mA → V = 0,05 V, P = 5 mW; không giới hạn (3 A) → P = 4,5 W</text></svg><figcaption>Hình 2. Nguồn bench giới hạn dòng: dòng khởi động nạp tụ chạm ngưỡng giới hạn trong vài ms rồi tụt về dòng nghỉ; nếu dòng vẫn kịch trần thì có sự cố.</figcaption></figure>
+</section>
+</section>
+<section id="a1-đo-điện-áp-từng-nhánh" class="level2 ">
+<h2>4. Đo điện áp từng nhánh</h2>
+<p>Khi dòng ổn định ở mức hợp lý, đo điện áp từng nhánh nguồn bằng đồng hồ, kiểm tra dải cho phép. Với dung sai ±5%:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr class="header">
+<th>Rail</th>
+<th>Dải chấp nhận</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>5 V</td>
+<td>4,75 đến 5,25 V</td>
+</tr>
+<tr class="even">
+<td>3,3 V</td>
+<td>3,135 đến 3,465 V</td>
+</tr>
+<tr class="odd">
+<td>1,8 V</td>
+<td>1,71 đến 1,89 V</td>
+</tr>
+</tbody>
+</table></div>
+<p>Nếu điện áp lệch: kiểm tra cầu chia hồi tiếp của IC nguồn đầu tiên, vì nhầm giá trị điện trở là nguyên nhân phổ biến. Nếu rail 3,3 V chỉ thấy 2,8 V và dòng cao, có thể có tải quá nặng hoặc ngắn mạch một phần ở vi điều khiển.</p>
+<p>Thứ tự bật nguồn (power sequencing): một số IC yêu cầu rail lõi lên trước rail I/O hoặc ngược lại. Nếu board có nhiều rail, đo từng rail theo thứ tự và so với datasheet, kiểm tra tín hiệu Power Good (PG) và chân Enable.</p>
+</section>
+<section id="a1-kiểm-tra-nhiệt" class="level2 ">
+<h2>5. Kiểm tra nhiệt</h2>
+<p>Sau vài phút có điện, kiểm tra nhiệt độ các linh kiện nguồn. Dùng camera nhiệt nếu có; nếu không, đặt ngón tay lướt nhanh trên các linh kiện (chỉ khi điện áp thấp, an toàn, và lướt thật nhanh). Linh kiện nóng bất thường so với dự đoán là cảnh báo.</p>
+<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ: LDO hạ từ 5 V xuống 3,3 V, tải 300 mA tỏa <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>5</mn><mo>−</mo><mn>3,3</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>×</mo><mn>0,3</mn><mo>=</mo><mn>0,51</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">W</mtext></mrow><annotation encoding="application/x-tex">(5 - 3{,}3) \times 0{,}3 = 0{,}51\ \text{W}</annotation></semantics></math>. Với điện trở nhiệt giả định 90 °C/W, nhiệt độ tăng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,51</mn><mo>×</mo><mn>90</mn><mo>≈</mo><mn>46</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">°C</mtext></mrow><annotation encoding="application/x-tex">0{,}51 \times 90 \approx 46\ \text{°C}</annotation></semantics></math> so với môi trường, tức khoảng 70 °C ở 25 °C môi trường: nóng nhưng chạm được trong thời gian ngắn; nếu đo thấy nóng hơn nhiều thì có thể tải thực lớn hơn dự tính. Một IC nóng rực khi board chưa chạy chương trình gì là dấu hiệu của ngắn mạch bên trong hoặc cấp nguồn sai chân.</p></div>
+</section>
+<section id="a1-reset-clock-và-chương-trình-đầu-tiên" class="level2 ">
+<h2>6. Reset, clock và chương trình đầu tiên</h2>
+<p>Chỉ khi các rail ổn định mới chuyển sang tín hiệu:</p>
+<ol type="1">
+<li><strong>Reset</strong>: đo chân reset của vi điều khiển, phải ở mức cao sau khi cấp nguồn (hoặc theo đúng mức datasheet), không dao động.</li>
+<li><strong>Clock</strong>: đo dạng sóng ở thạch anh hoặc ngõ ra dao động bằng probe x10 có dây mass ngắn (xem bài đo ripple tuần 3). Nếu thạch anh không dao động, kiểm tra tụ tải và mức drive.</li>
+<li><strong>Giao tiếp gỡ lỗi</strong>: kết nối SWD hoặc JTAG, kiểm tra chip nhận diện ID đúng.</li>
+<li><strong>Chương trình tối thiểu</strong>: nạp một chương trình chớp LED để xác nhận chip chạy và đồng hồ đúng.</li>
+</ol>
+<p>Mỗi lần thêm một khối (cảm biến, bộ nhớ, giao tiếp) kiểm tra riêng rồi mới ghép. Khi lỗi, bạn biết nguyên nhân nằm ở khối vừa thêm.</p>
+<figure class="fig"><svg viewBox="0 0 760 300" role="img" aria-label="Lưu đồ quy trình bring-up board mới" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="40" width="160" height="60" rx="10" class="a1 fl-soft"/><text x="100" y="65" class="tm" text-anchor="middle">Bước 1</text><text x="100" y="85" class="tx b" text-anchor="middle" style="font-size:13px">Soi mắt</text><rect x="200" y="40" width="160" height="60" rx="10" class="a1 fl-soft"/><text x="280" y="65" class="tm" text-anchor="middle">Bước 2</text><text x="280" y="85" class="tx b" text-anchor="middle" style="font-size:13px">Đo trở rail</text><rect x="380" y="40" width="160" height="60" rx="10" class="a1 fl-soft"/><text x="460" y="65" class="tm" text-anchor="middle">Bước 3</text><text x="460" y="85" class="tx b" text-anchor="middle" style="font-size:13px">Cấp nguồn hạn dòng</text><rect x="560" y="40" width="160" height="60" rx="10" class="a1 fl-soft"/><text x="640" y="65" class="tm" text-anchor="middle">Bước 4</text><text x="640" y="85" class="tx b" text-anchor="middle" style="font-size:13px">Đo áp từng rail</text><rect x="110" y="150" width="160" height="60" rx="10" class="a1 fl-soft"/><text x="190" y="175" class="tm" text-anchor="middle">Bước 5</text><text x="190" y="195" class="tx b" text-anchor="middle" style="font-size:13px">Kiểm tra nhiệt</text><rect x="290" y="150" width="160" height="60" rx="10" class="a1 fl-soft"/><text x="370" y="175" class="tm" text-anchor="middle">Bước 6</text><text x="370" y="195" class="tx b" text-anchor="middle" style="font-size:13px">Reset, clock</text><rect x="470" y="150" width="160" height="60" rx="10" class="a1 fl-soft"/><text x="550" y="175" class="tm" text-anchor="middle">Bước 7</text><text x="550" y="195" class="tx b" text-anchor="middle" style="font-size:13px">Chương trình tối thiểu</text><line x1="180" y1="70" x2="220" y2="70" class="ln" marker-end="url(#arr)"/><line x1="360" y1="70" x2="400" y2="70" class="ln" marker-end="url(#arr)"/><line x1="540" y1="70" x2="580" y2="70" class="ln" marker-end="url(#arr)"/><path d="M640,100 L640,125 L190,125 L190,150" class="ln" fill="none" marker-end="url(#arr)"/><line x1="270" y1="180" x2="290" y2="180" class="ln" marker-end="url(#arr)"/><line x1="450" y1="180" x2="470" y2="180" class="ln" marker-end="url(#arr)"/><text x="290" y="228" class="ta1 b">Sau bước 7: ghép dần từng khối chức năng</text><text x="20" y="264" class="twr b">Mỗi bước có lỗi: dừng, sửa, ghi lại, quay về bước đó. Không bỏ qua để "xem thử".</text><text x="20" y="286" class="tm">Bước 2 và 3 là hai chốt chặn bảo vệ board khỏi ngắn mạch</text></svg><figcaption>Hình 3. Quy trình bring-up: kiểm tra ngắn mạch, cấp nguồn có hạn dòng, đo từng nhánh rồi mới nạp chương trình.</figcaption></figure>
+</section>
+<section id="a1-cảnh-báo-an-toàn" class="level2 ">
+<h2>Cảnh báo an toàn</h2>
+<ul>
+<li>Ở bước đầu, luôn dùng nguồn có hạn dòng và điện áp thấp. Board dùng điện lưới AC hoặc điện áp cao (trên 50 V) phải bring-up qua biến áp cách ly và có người giám sát, không dùng quy trình ở bài này một cách máy móc.</li>
+<li>Pin lithium: không nối pin vào board mới khi chưa kiểm tra ngắn mạch; pin cấp dòng rất lớn mà không có giới hạn như nguồn bàn.</li>
+<li>Tụ điện phân điện áp cao có thể giữ điện sau khi tắt nguồn; xả tụ trước khi chạm.</li>
+</ul>
+</section>
+<section id="a1-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
+<h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
+<ul>
+<li>Cắm nguồn không hạn dòng ngay từ lần đầu, làm cháy đường mạch hoặc linh kiện khi có ngắn mạch.</li>
+<li>Đặt giới hạn dòng quá cao (“để chắc chắn đủ”), mất tác dụng bảo vệ.</li>
+<li>Bỏ qua việc đo điện trở các rail trước khi cấp điện.</li>
+<li>Đo rail bằng que mảnh, tay run, làm chập chân linh kiện nhỏ.</li>
+<li>Cho rằng điện áp rail đúng là mọi thứ đúng mà không xem dòng tiêu thụ.</li>
+<li>Không so sánh với board thứ hai khi nghi ngờ, mất thời gian đoán.</li>
+<li>Nạp chương trình phức tạp ngay lần đầu, không biết lỗi ở phần cứng hay phần mềm.</li>
+<li>Không ghi lại kết quả đo và chỗ đã sửa, lô board sau lặp lại lỗi.</li>
+</ul>
+</section>
+<section id="a1-tổng-kết" class="level2 summary">
+<h2>Tổng kết</h2>
+<ul>
+<li>Bring-up đi từ kiểm tra thụ động (soi mắt, đo điện trở rail) đến cấp nguồn có hạn dòng, rồi mới đo tín hiệu.</li>
+<li>Giới hạn dòng khoảng 2 lần dòng nghỉ dự kiến: ngắn mạch 0,5 Ω với giới hạn 100 mA chỉ tỏa 5 mW, còn với nguồn 3 A thì 4,5 W.</li>
+<li>Dòng nạp tụ khi khởi động làm nguồn chạm CC trong vài ms (ví dụ 4,8 ms với 146 µF ở 100 mA); kéo dài hơn thì có vấn đề.</li>
+<li>Kiểm tra từng rail trong dung sai, sau đó nhiệt độ, rồi reset, clock và chương trình tối thiểu.</li>
+<li>Thêm từng khối một và ghi lại kết quả để lỗi luôn khoanh được vào phạm vi nhỏ.</li>
+</ul>
+</section>
+<section id="a1-gợi-ý-đọc-tiếp" class="level2 next">
+<h2>Gợi ý đọc tiếp</h2>
+<ul>
+<li>Dùng camera nhiệt và phun lạnh để tìm linh kiện lỗi.</li>
+<li>Gỡ lỗi giao tiếp SWD, JTAG và UART trên board mới.</li>
+<li>Thiết kế điểm test (test point) và cầu đo dòng để bring-up dễ hơn.</li>
+</ul>
+</section>
+<section id="a1-nguồn-tham-khảo" class="level2 refs">
+<h2>Nguồn tham khảo</h2>
+<ul>
+<li>Hướng dẫn bring-up và gỡ lỗi board của các hãng vi điều khiển và EDA (ví dụ tài liệu “hardware design guidelines” của Espressif, ST, NXP, Microchip): cần bổ sung mã tài liệu cụ thể.</li>
+<li>Tài liệu hướng dẫn sử dụng nguồn bàn có hạn dòng (CC/CV) và đồng hồ vạn năng của hãng thiết bị đo.</li>
+<li>Bảng điện trở dây theo AWG trong tài liệu kỹ thuật dây dẫn: cần kiểm tra giá trị chính xác cho loại dây thực dùng.</li>
+</ul>
+</section>
+</div>
+  <a class="totop" href="#top">↑ Về đầu trang</a>
+</article>
+<article id="a2" class="post a2">
+  <header class="post-head">
+    <div class="post-num">Bài 02</div>
+    <div class="chips"><span class="chip cat">Thiết kế PCB & Layout</span><span class="chip lvl">Mức Nâng cao</span><span class="chip">⏱ 11 phút đọc</span></div>
+    <h2 class="post-title">Mặt phẳng GND, via và stackup 4 lớp cho mạch hỗn hợp số-analog</h2>
+    <p class="lede">Thiết kế stackup 4 lớp và mặt phẳng GND cho mạch hỗn hợp số-analog: trở kháng microstrip, điện cảm via, ground bounce, tụ tách nguồn và lý do không cắt GND.</p>
+    <ul class="tags"><li>#stackup</li><li>#mặt phẳng GND</li><li>#via</li><li>#mạch hỗn hợp</li><li>#trở kháng microstrip</li><li>#ground bounce</li></ul>
+  </header>
+  <div class="post-body"><p>Ở board 2 lớp, đường GND thường là một mạng dây vòng vèo; ở board 4 lớp, GND trở thành một mặt phẳng liền khối ngay dưới lớp tín hiệu, và đây là thay đổi quan trọng nhất cho nhiễu, EMI và độ chính xác của phần analog. Nhưng chuyển sang 4 lớp không tự động cho board tốt: stackup chọn sai, via đặt bừa, hoặc cắt mặt phẳng GND thành “khu số” và “khu analog” vẫn gây ra đủ loại sự cố. Bài này giải thích bằng số liệu: vì sao mặt phẳng GND liền quan trọng, điện cảm của via đáng bao nhiêu, và bố trí mạch hỗn hợp sao cho dòng số không đi qua phần analog.</p><div class="stats"><div class="stat"><b>48,2 Ω</b><span>trở kháng microstrip w 0,35 mm, h 0,2 mm, ε<sub>r</sub> 4,4</span></div><div class="stat"><b>1,30 nH</b><span>điện cảm via dài 1,6 mm, đường kính 0,3 mm</span></div><div class="stat"><b>41,6 mV</b><span>ground bounce khi 8 chân chuyển mạch 8 mA trong 2 ns</span></div><div class="stat"><b>8,8 MHz</b><span>tần số cộng hưởng riêng của tụ 100 nF với đường nối 3,3 nH</span></div></div>
+<section id="a2-kiến-thức-nền-cần-có" class="level2 basics">
+<h2>Kiến thức nền cần có</h2>
+<ul>
+<li>Dòng điện luôn đi theo vòng kín. Ở tần số thấp, dòng quay về theo đường điện trở thấp nhất; ở tần số cao (từ vài trăm kHz trở lên), dòng quay về theo đường điện cảm thấp nhất, tức là <strong>ngay bên dưới đường tín hiệu</strong>.</li>
+<li>Điện cảm: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo>=</mo><mi>L</mi><mo>×</mo><mi>d</mi><mi>i</mi><mi>/</mi><mi>d</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">V = L \times di/dt</annotation></semantics></math>. Điện cảm của vòng dòng tỉ lệ với diện tích vòng.</li>
+<li>Đã đọc bài “Layout mạch buck: hot loop, nút SW và đường hồi tiếp” tuần 2 sẽ dễ theo dõi phần diện tích vòng dòng.</li>
+</ul>
+</section>
+<section id="a2-vì-sao-4-lớp-tốt-hơn-2-lớp" class="level2 ">
+<h2>1. Vì sao 4 lớp tốt hơn 2 lớp</h2>
+<p>Board 2 lớp thường dày 1,6 mm với tín hiệu trên cả hai mặt. Khoảng cách từ đường tín hiệu tới mặt phẳng đồng gần nhất là 1,5 mm trở lên (nếu có đổ đồng GND ở mặt kia), nên vòng dòng lớn, trở kháng đường tín hiệu cao và khó kiểm soát.</p>
+<p>Board 4 lớp phổ biến có stackup:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr class="header">
+<th>Lớp</th>
+<th>Chức năng</th>
+<th>Ghi chú</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>L1 (trên)</td>
+<td>Tín hiệu, linh kiện</td>
+<td>gần L2</td>
+</tr>
+<tr class="even">
+<td>L2</td>
+<td><strong>GND liền khối</strong></td>
+<td>không đi tín hiệu</td>
+</tr>
+<tr class="odd">
+<td>L3</td>
+<td>Nguồn (và vài tín hiệu ít quan trọng)</td>
+<td>mặt phẳng nguồn</td>
+</tr>
+<tr class="even">
+<td>L4 (dưới)</td>
+<td>Tín hiệu, linh kiện</td>
+<td>gần L3</td>
+</tr>
+</tbody>
+</table></div>
+<p>Đặc điểm: lớp prepreg (vật liệu cách điện) giữa L1 và L2 mỏng, ví dụ 0,2 mm (giá trị minh họa; cần hỏi nhà sản xuất PCB về cấu trúc và độ dày thực), còn lõi giữa L2 và L3 dày hơn, tổng khoảng 1,6 mm. Đường tín hiệu trên L1 chạy ngay trên GND cách chỉ 0,2 mm. Như vậy:</p>
+<ul>
+<li>Dòng hồi về đi thẳng dưới đường tín hiệu, diện tích vòng nhỏ, điện cảm thấp.</li>
+<li>Trở kháng đặc tính xác định được.</li>
+<li>L2 và L3 là cặp mặt phẳng GND và nguồn cách nhau gần, tạo điện dung phẳng có ích cho tách nguồn tần số cao.</li>
+</ul>
+<figure class="fig"><svg viewBox="0 0 760 296" role="img" aria-label="Mặt cắt stackup 4 lớp với GND liền khối ở lớp 2" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="60" y="40" width="420" height="12" class="fl-cu"/><text x="500" y="51" class="tx b">L1  Tín hiệu + linh kiện</text><rect x="60" y="52" width="420" height="36" class="fl-pcb"/><text x="500" y="74.0" class="tm">prepreg 0,2 mm</text><rect x="60" y="88" width="420" height="12" class="fl-cu"/><text x="500" y="99" class="tx b">L2  GND liền khối</text><rect x="60" y="100" width="420" height="70" class="fl-pcb"/><text x="500" y="139.0" class="tm">lõi 1,0 mm</text><rect x="60" y="170" width="420" height="12" class="fl-cu"/><text x="500" y="181" class="tx b">L3  Nguồn</text><rect x="60" y="182" width="420" height="36" class="fl-pcb"/><text x="500" y="204.0" class="tm">prepreg 0,2 mm</text><rect x="60" y="218" width="420" height="12" class="fl-cu"/><text x="500" y="229" class="tx b">L4  Tín hiệu + linh kiện</text><rect x="200" y="28" width="60" height="12" rx="2" class="fl-a1"/><text x="230" y="22" class="ta1 b" text-anchor="middle">w = 0,35 mm</text><path d="M470,84 L100,84" class="wr thick" marker-end="url(#arr)" fill="none"/><text x="280" y="108" class="twr b" text-anchor="middle">dòng hồi chạy ngay dưới đường tín hiệu</text><text x="60" y="258" class="tx b">Z₀ ≈ 48 Ω với w = 0,35 mm, h = 0,2 mm (εr 4,4); 2 lớp (h = 1,5 mm) cần w ≈ 2,76 mm cho 50 Ω</text><text x="60" y="278" class="tm">Độ dày, εr và cấu trúc thật cần xác nhận với nhà sản xuất PCB; tổng khoảng 1,6 mm</text></svg><figcaption>Hình 1. Stackup 4 lớp: tín hiệu, mặt phẳng GND, mặt phẳng nguồn, tín hiệu; lớp GND đặt sát lớp tín hiệu trên cùng để dòng hồi có đường ngắn.</figcaption></figure>
+</section>
+<section id="a2-trở-kháng-microstrip-vì-sao-đường-tín-hiệu-hẹp-hơn" class="level2 ">
+<h2>2. Trở kháng microstrip: vì sao đường tín hiệu hẹp hơn</h2>
+<p>Đường tín hiệu trên lớp ngoài, phía dưới có mặt phẳng GND, gọi là <strong>microstrip</strong>. Công thức gần đúng (IPC-2141) cho trở kháng đặc tính:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mn>0</mn></msub><mo>≈</mo><mfrac><mn>87</mn><msqrt><mrow><msub><mi>ε</mi><mi>r</mi></msub><mo>+</mo><mn>1,41</mn></mrow></msqrt></mfrac><mo>ln</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mn>5,98</mn><mspace width="0.167em"></mspace><mi>h</mi></mrow><mrow><mn>0,8</mn><mspace width="0.167em"></mspace><mi>w</mi><mo>+</mo><mi>t</mi></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">Z_0 \approx \frac{87}{\sqrt{\varepsilon_r + 1{,}41}} \ln\left(\frac{5{,}98\,h}{0{,}8\,w + t}\right)</annotation></semantics></math></p>
+<p>với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math> là khoảng cách tới mặt phẳng, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math> là độ rộng đường, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math> là độ dày đồng, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ε</mi><mi>r</mi></msub><annotation encoding="application/x-tex">\varepsilon_r</annotation></semantics></math> là hằng số điện môi (khoảng 4,2 đến 4,4 cho FR-4, cần kiểm tra với nhà sản xuất). Công thức này chỉ gần đúng và chính xác nhất khi <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mi>/</mi><mi>h</mi></mrow><annotation encoding="application/x-tex">w/h</annotation></semantics></math> trong khoảng 0,1 đến 2,0; để thiết kế thật dùng công cụ tính trở kháng của nhà sản xuất PCB hoặc bộ giải trường.</p>
+<div class="callout note"><span class="callout-tag">Ví dụ</span><p>Ví dụ: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ε</mi><mi>r</mi></msub><mo>=</mo><mn>4,4</mn></mrow><annotation encoding="application/x-tex">\varepsilon_r = 4{,}4</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo>=</mo><mn>0,2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mm</mtext></mrow><annotation encoding="application/x-tex">h = 0{,}2\ \text{mm}</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><mn>0,35</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mm</mtext></mrow><annotation encoding="application/x-tex">w = 0{,}35\ \text{mm}</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>0,035</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mm</mtext></mrow><annotation encoding="application/x-tex">t = 0{,}035\ \text{mm}</annotation></semantics></math>:</p></div>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Z</mi><mn>0</mn></msub><mo>=</mo><mfrac><mn>87</mn><msqrt><mrow><mn>5,81</mn></mrow></msqrt></mfrac><mo>ln</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mn>5,98</mn><mo>×</mo><mn>0,2</mn></mrow><mrow><mn>0,8</mn><mo>×</mo><mn>0,35</mn><mo>+</mo><mn>0,035</mn></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>36,09</mn><mo>×</mo><mo>ln</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>3,797</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>48,2</mn><mspace width="0.222em"></mspace><mi>Ω</mi></mrow><annotation encoding="application/x-tex">Z_0 = \frac{87}{\sqrt{5{,}81}} \ln\left(\frac{5{,}98 \times 0{,}2}{0{,}8\times0{,}35 + 0{,}035}\right) = 36{,}09 \times \ln(3{,}797) \approx 48{,}2\ \Omega</annotation></semantics></math></p>
+<p>Độ rộng đường để có đúng 50 Ω với các giá trị khác nhau của <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math> (tính bằng cách giải ngược công thức, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ε</mi><mi>r</mi></msub><mo>=</mo><mn>4,4</mn></mrow><annotation encoding="application/x-tex">\varepsilon_r = 4{,}4</annotation></semantics></math>):</p>
+<div class="tablewrap"><table>
+<thead>
+<tr class="header">
+<th>Khoảng cách <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math> tới GND</th>
+<th>Độ rộng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>w</mi><annotation encoding="application/x-tex">w</annotation></semantics></math> cho 50 Ω</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0,1 mm</td>
+<td>khoảng 0,14 mm</td>
+</tr>
+<tr class="even">
+<td>0,2 mm</td>
+<td>khoảng 0,33 mm</td>
+</tr>
+<tr class="odd">
+<td>1,5 mm (2 lớp)</td>
+<td>khoảng 2,76 mm</td>
+</tr>
+</tbody>
+</table></div>
+<p>Board 2 lớp cần đường tín hiệu 50 Ω rộng gần 2,8 mm, không thực tế cho đường tín hiệu thông thường; board 4 lớp chỉ cần khoảng 0,33 mm, đi dây dễ dàng. Đây là lý do board có tín hiệu nhanh (USB, SPI tốc độ cao, bộ nhớ, RF) gần như luôn từ 4 lớp trở lên.</p>
+<div class="callout tip"><span class="callout-tag">Quy tắc</span><p>Quy tắc đi kèm: giữ khoảng cách giữa các đường tín hiệu tối thiểu 3 lần độ rộng (quy tắc 3W, ví dụ khoảng 1 mm cho đường 0,33 mm) để giảm nhiễu xuyên âm (crosstalk).</p></div>
+</section>
+<section id="a2-via-điện-cảm-nhỏ-nhưng-không-bỏ-qua-được" class="level2 ">
+<h2>3. Via: điện cảm nhỏ nhưng không bỏ qua được</h2>
+<p>Một via nối L1 xuống L2 (hoặc xuyên suốt board) có điện cảm. Công thức gần đúng cho via hình trụ:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>≈</mo><mn>5,08</mn><mspace width="0.167em"></mspace><mi>h</mi><mrow><mo stretchy="true" form="prefix">[</mo><mo>ln</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mn>4</mn><mi>h</mi></mrow><mi>d</mi></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><mspace width="0.222em"></mspace><mtext mathvariant="normal">nH</mtext></mrow><annotation encoding="application/x-tex">L \approx 5{,}08\,h\left[\ln\left(\frac{4h}{d}\right) + 1\right]\ \text{nH}</annotation></semantics></math></p>
+<p>với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math> và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math> (chiều dài và đường kính) tính bằng inch. Công thức này giả định via dài hơn đường kính nhiều; với via rất ngắn thì kém chính xác, nên chỉ dùng cho ước lượng bậc độ lớn.</p>
+<p>Via khoan 0,3 mm xuyên suốt tấm 1,6 mm:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>≈</mo><mn>5,08</mn><mo>×</mo><mn>0,063</mn><mo>×</mo><mrow><mo stretchy="true" form="prefix">[</mo><mo>ln</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mn>4</mn><mo>×</mo><mn>0,063</mn></mrow><mrow><mn>0,0118</mn></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><mo>≈</mo><mn>1,3</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nH</mtext></mrow><annotation encoding="application/x-tex">L \approx 5{,}08 \times 0{,}063 \times \left[\ln\left(\frac{4\times0{,}063}{0{,}0118}\right)+1\right] \approx 1{,}3\ \text{nH}</annotation></semantics></math></p>
+<p>Ở 100 MHz, cảm kháng của nó là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>L</mi></msub><mo>=</mo><mn>2</mn><mi>π</mi><mo>×</mo><msup><mn>10</mn><mn>8</mn></msup><mo>×</mo><mn>1,3</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>≈</mo><mn>0,82</mn><mspace width="0.222em"></mspace><mi>Ω</mi></mrow><annotation encoding="application/x-tex">X_L = 2\pi \times 10^8 \times 1{,}3\times10^{-9} \approx 0{,}82\ \Omega</annotation></semantics></math>. Điện trở một chiều của via cũng đáng kể khi dòng lớn: với lớp mạ đồng khoảng 25 µm, thành via có tiết diện <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mi>π</mi><mn>4</mn></mfrac><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><msup><mn>3</mn><mn>2</mn></msup><mo>−</mo><mn>0</mn><mo>,</mo><msup><mn>25</mn><mn>2</mn></msup><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>0,0216</mn><mspace width="0.222em"></mspace><msup><mtext mathvariant="normal">mm</mtext><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\frac{\pi}{4}(0{,}3^2 - 0{,}25^2) \approx 0{,}0216\ \text{mm}^2</annotation></semantics></math>, điện trở <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ρ</mi><mi>l</mi><mi>/</mi><mi>A</mi><mo>=</mo><mn>1,72</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>8</mn></mrow></msup><mo>×</mo><mn>1,6</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>3</mn></mrow></msup><mi>/</mi><mn>0,0216</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup><mo>≈</mo><mn>1,27</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">m</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">\rho l / A = 1{,}72\times10^{-8} \times 1{,}6\times10^{-3} / 0{,}0216\times10^{-6} \approx 1{,}27\ \text{m}\Omega</annotation></semantics></math>. Với dòng 1 A, sụt áp chỉ khoảng 1,3 mV nên điện trở không phải vấn đề chính; nhưng nhiệt độ via khi qua dòng lớn thì cần xem tới và nên dùng nhiều via song song cho đường nguồn.</p>
+<p>Với via chỉ đi từ L1 xuống L2 (độ dài khoảng 0,2 mm), điện cảm nhỏ hơn khoảng một bậc độ lớn so với via xuyên suốt. Đây là lợi thế của stackup 4 lớp với GND ở lớp 2: chân GND của linh kiện nối xuống GND bằng via cực ngắn.</p>
+<section id="a2-ground-bounce-ví-dụ-số" class="level3">
+<h3>Ground bounce: ví dụ số</h3>
+<p>Giả sử 8 chân đầu ra số của một IC cùng chuyển trạng thái, mỗi chân 8 mA, cạnh 2 ns. Tổng thay đổi dòng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>i</mi><mi>/</mi><mi>d</mi><mi>t</mi><mo>=</mo><mn>8</mn><mo>×</mo><mn>8</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mA</mtext><mi>/</mi><mn>2</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">ns</mtext><mo>=</mo><mn>3,2</mn><mo>×</mo><msup><mn>10</mn><mn>7</mn></msup><mspace width="0.222em"></mspace><mtext mathvariant="normal">A/s</mtext></mrow><annotation encoding="application/x-tex">di/dt = 8 \times 8\ \text{mA} / 2\ \text{ns} = 3{,}2\times10^7\ \text{A/s}</annotation></semantics></math>. Nếu dòng hồi đi qua một via 1,3 nH:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>V</mi><mo>=</mo><mi>L</mi><mo>×</mo><mfrac><mrow><mi>d</mi><mi>i</mi></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>=</mo><mn>1,3</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>9</mn></mrow></msup><mo>×</mo><mn>3,2</mn><mo>×</mo><msup><mn>10</mn><mn>7</mn></msup><mo>≈</mo><mn>41,6</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">\Delta V = L \times \frac{di}{dt} = 1{,}3\times10^{-9} \times 3{,}2\times10^{7} \approx 41{,}6\ \text{mV}</annotation></semantics></math></p>
+<p>Hai via song song (0,65 nH) còn khoảng 20,8 mV. So với một LSB của ADC 12 bit, 3,3 V (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,806</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">0{,}806\ \text{mV}</annotation></semantics></math>), 41,6 mV tương đương khoảng 52 LSB. Điện áp “nảy” trên GND này là thứ làm ADC đọc sai khi các chân số cùng chuyển trạng thái. Cách giảm: dùng via ngắn xuống mặt phẳng GND, nhiều via song song, giảm số chân chuyển cùng lúc, hoặc giảm tốc độ cạnh bằng điện trở nối tiếp.</p>
+<figure class="fig"><svg viewBox="0 0 760 290" role="img" aria-label="Ground bounce khi dòng chuyển mạch đi qua một via dài so với nhiều via ngắn" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="180" y="22" class="tx b" text-anchor="middle">Một via dài xuống GND</text><rect x="40" y="50" width="260" height="30" rx="6" class="fl-ic"/><text x="170" y="70" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">IC số: 8 chân chuyển, 8 mA mỗi chân</text><rect x="40" y="200" width="260" height="14" class="fl-cu"/><text x="170" y="232" class="tm" text-anchor="middle">mặt phẳng GND</text><line x1="170" y1="80" x2="170" y2="200" class="wr thick"/><text x="182" y="140" class="twr b">via 1,3 nH</text><text x="170" y="262" class="twr b" text-anchor="middle">ΔV = L·di/dt ≈ 41,6 mV ≈ 52 LSB (ADC 12 bit)</text><line x1="380" y1="14" x2="380" y2="280" class="grid"/><text x="570" y="22" class="tx b" text-anchor="middle">Nhiều via ngắn xuống GND liền</text><rect x="430" y="50" width="260" height="30" rx="6" class="fl-ic"/><text x="560" y="70" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">IC số: 8 chân chuyển, 8 mA mỗi chân</text><rect x="430" y="200" width="260" height="14" class="fl-cu"/><text x="560" y="232" class="tm" text-anchor="middle">mặt phẳng GND</text><line x1="480" y1="80" x2="480" y2="200" class="a1 thick"/><line x1="535" y1="80" x2="535" y2="200" class="a1 thick"/><line x1="590" y1="80" x2="590" y2="200" class="a1 thick"/><line x1="645" y1="80" x2="645" y2="200" class="a1 thick"/><text x="560" y="262" class="ta1 b" text-anchor="middle">ΔV nhỏ hơn nhiều: song song và ngắn</text></svg><figcaption>Hình 2. Ground bounce: dòng chuyển mạch 8 × 8 mA trong 2 ns qua điện cảm via 1,3 nH tạo gần 42 mV, tương đương 52 LSB của ADC 12 bit.</figcaption></figure>
+</section>
+</section>
+<section id="a2-tụ-tách-nguồn-và-vị-trí-via" class="level2 ">
+<h2>4. Tụ tách nguồn và vị trí via</h2>
+<p>Tụ tách nguồn (decoupling) 100 nF đặt gần chân nguồn của IC. Hiệu quả của nó phụ thuộc vào điện cảm vòng toàn bộ: điện cảm nối tiếp của tụ (ESL, khoảng 0,7 nH cho gói 0402, ước lượng) cộng điện cảm của đường dẫn và via. Tần số cộng hưởng riêng:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mi>S</mi><mi>R</mi><mi>F</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mrow><mn>2</mn><mi>π</mi><msqrt><mrow><mi>L</mi><mo>×</mo><mi>C</mi></mrow></msqrt></mrow></mfrac></mrow><annotation encoding="application/x-tex">f_{SRF} = \frac{1}{2\pi\sqrt{L \times C}}</annotation></semantics></math></p>
+<ul>
+<li>Nếu tụ nối tới mặt phẳng bằng đường mạch dài và via xuyên suốt, tổng điện cảm khoảng 3,3 nH: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mi>S</mi><mi>R</mi><mi>F</mi></mrow></msub><mo>≈</mo><mn>8,8</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">MHz</mtext></mrow><annotation encoding="application/x-tex">f_{SRF} \approx 8{,}8\ \text{MHz}</annotation></semantics></math>.</li>
+<li>Nếu tụ nối bằng đường ngắn và via sát pad xuống mặt phẳng ở lớp kề, tổng điện cảm khoảng 1 nH: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mi>S</mi><mi>R</mi><mi>F</mi></mrow></msub><mo>≈</mo><mn>15,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">MHz</mtext></mrow><annotation encoding="application/x-tex">f_{SRF} \approx 15{,}9\ \text{MHz}</annotation></semantics></math>.</li>
+</ul>
+<p>Trên tần số cộng hưởng này tụ cư xử như cuộn cảm và không còn tách nguồn được. Quy tắc: đặt tụ sát chân nguồn của IC, đặt via sát pad tụ (hoặc via-in-pad nếu quy trình sản xuất cho phép), kéo bằng đường ngắn và dày; đừng đặt tụ xa rồi nối bằng một đường dài.</p>
+<p>Hai mặt phẳng GND (L2) và nguồn (L3) cách nhau 0,2 mm tạo điện dung phẳng: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>=</mo><msub><mi>ε</mi><mn>0</mn></msub><msub><mi>ε</mi><mi>r</mi></msub><mi>A</mi><mi>/</mi><mi>d</mi><mo>=</mo><mn>8,854</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>12</mn></mrow></msup><mo>×</mo><mn>4,4</mn><mo>×</mo><mn>0,0025</mn><mi>/</mi><mn>0,0002</mn><mo>≈</mo><mn>487</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">pF</mtext></mrow><annotation encoding="application/x-tex">C = \varepsilon_0 \varepsilon_r A / d = 8{,}854\times10^{-12} \times 4{,}4 \times 0{,}0025 / 0{,}0002 \approx 487\ \text{pF}</annotation></semantics></math> cho khu 50 × 50 mm (1948 pF cho 100 × 100 mm). Con số này nhỏ so với tụ rời nhưng hữu ích ở dải trên vài chục MHz. Lưu ý lõi giữa L2 và L3 thường dày hơn 0,2 mm (ví dụ 1,0 mm) nên điện dung thực nhỏ hơn; muốn tăng điện dung phẳng cần đưa L2 và L3 sát nhau, điều này ảnh hưởng tới độ dày lớp prepreg bên ngoài.</p>
+</section>
+<section id="a2-mạch-hỗn-hợp-có-nên-cắt-gnd-không" class="level2 ">
+<h2>5. Mạch hỗn hợp: có nên cắt GND không?</h2>
+<p>Nhiều tài liệu cũ khuyên chia GND thành “GND số” và “GND analog” rồi nối ở một điểm. Với board nhiều lớp hiện đại, khuyến nghị phổ biến là:</p>
+<ul>
+<li><strong>Giữ một mặt phẳng GND liền khối</strong> (không cắt), vì dòng hồi tần số cao cần đường ngay dưới tín hiệu. Khe hoặc cắt trên GND buộc dòng đi vòng, tăng diện tích vòng và phát xạ.</li>
+<li><strong>Phân khu bằng cách đặt linh kiện</strong>: khu analog (ADC, op-amp, tham chiếu) ở một vùng, khu số (vi điều khiển, bộ nhớ, giao tiếp) ở vùng khác, khu nguồn đóng cắt ở vùng thứ ba. Dòng hồi của mạch số chỉ chạy dưới khu số vì nó theo tín hiệu.</li>
+<li><strong>Không cho đường tín hiệu số đi qua khu analog</strong>, và ngược lại. Đường số nên đi trong khu số; đường tín hiệu analog giữ ngắn và đi trong khu analog.</li>
+<li><strong>Đường nào bắt buộc băng qua ranh giới</strong> phải đi trên mặt phẳng GND nguyên vẹn, không đi qua khe cắt.</li>
+<li>ADC và DAC chia khu vực: nhiều datasheet nói nối chân AGND và DGND của IC vào cùng mặt phẳng GND liền khối ngay dưới IC. Cần đọc khuyến nghị bố trí của chính IC bạn dùng.</li>
+</ul>
+<p>Đường nguồn (L3): nếu cần chia nhiều rail nguồn thì chia mặt phẳng nguồn thành các vùng (power island) nhưng giữ GND (L2) liền; không đi tín hiệu tốc độ cao băng qua khe giữa hai vùng nguồn ở L3, vì dòng hồi sẽ tìm đường qua mặt phẳng nguồn thay vì GND.</p>
+<figure class="fig"><svg viewBox="0 0 760 296" role="img" aria-label="Phân khu board hỗn hợp bằng vị trí linh kiện trên mặt phẳng GND liền" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><rect x="20" y="20" width="720" height="260" rx="14" class="fl-pcb"/><text x="40" y="270" class="tm">Lớp L2 bên dưới: mặt phẳng GND liền khối, không cắt</text><rect x="50" y="50" width="170" height="150" rx="10" class="wr" fill="none" stroke-dasharray="6 5"/><text x="135.0" y="72" class="twr b" text-anchor="middle">Nguồn đóng cắt</text><rect x="260" y="50" width="230" height="150" rx="10" class="a1" fill="none" stroke-dasharray="6 5"/><text x="375.0" y="72" class="ta1 b" text-anchor="middle">Khu số</text><rect x="530" y="50" width="180" height="150" rx="10" class="a2" fill="none" stroke-dasharray="6 5"/><text x="620.0" y="72" class="ta2 b" text-anchor="middle">Khu analog</text><rect x="290" y="100" width="70" height="50" rx="6" class="fl-ic"/><text x="325" y="130" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">MCU</text><rect x="560" y="100" width="70" height="50" rx="6" class="fl-ic"/><text x="595" y="130" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">ADC</text><rect x="80" y="100" width="70" height="50" rx="6" class="fl-ic"/><text x="115" y="130" class="tx b" text-anchor="middle" style="fill:var(--ic-ink)">Buck</text><path d="M360,125 L440,125 L440,170 L290,170 L290,150" class="wr thick" fill="none"/><text x="365" y="188" class="twr b">tín hiệu số ở lại trong khu số</text><path d="M650,125 L700,125" class="a2" fill="none"/><text x="720" y="230" class="ta2 b" text-anchor="end">đường analog ngắn, nằm trong khu analog</text><path d="M360,115 L560,115" class="mu dash" fill="none"/><text x="460" y="108" class="tm" text-anchor="middle">giao tiếp ADC</text></svg><figcaption>Hình 3. Chia vùng số và analog trên một mặt phẳng GND liền: giữ phần analog xa đường số, không cắt xẻ mặt phẳng dưới tín hiệu.</figcaption></figure>
+</section>
+<section id="a2-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
+<h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
+<ul>
+<li>Cắt mặt phẳng GND thành “GND số” và “GND analog” nối một điểm, buộc dòng hồi đi vòng qua điểm nối.</li>
+<li>Đi dây tín hiệu băng qua khe trên mặt phẳng GND hoặc nguồn.</li>
+<li>Đặt tụ tách nguồn xa chân IC và nối bằng đường dài với via xuyên suốt.</li>
+<li>Dùng một via đơn cho chân GND của IC có dòng chuyển mạch lớn.</li>
+<li>Đặt đường tín hiệu nhanh trên L4 trong khi lớp sát nó là mặt phẳng nguồn thay vì GND.</li>
+<li>Giả định độ dày lớp cách điện mà không xác nhận với nhà sản xuất PCB; trở kháng thực lệch nhiều.</li>
+<li>Đi dây tín hiệu analog nhạy cạnh nút SW của nguồn đóng cắt hoặc cạnh đường clock.</li>
+<li>Lấp đầy khoảng trống bằng các mảng đồng GND nhỏ cô lập (đảo đồng) không nối GND bằng via, thành anten.</li>
+</ul>
+</section>
+<section id="a2-tổng-kết" class="level2 summary">
+<h2>Tổng kết</h2>
+<ul>
+<li>Stackup 4 lớp với GND liền ở L2 sát L1 làm diện tích vòng dòng nhỏ và cho phép đường 50 Ω chỉ rộng khoảng 0,33 mm (so với khoảng 2,8 mm ở 2 lớp).</li>
+<li>Via 0,3 mm xuyên suốt 1,6 mm có điện cảm khoảng 1,3 nH; với 8 chân số chuyển 8 mA trong 2 ns tạo khoảng 42 mV ground bounce, tương đương khoảng 52 LSB ADC 12 bit.</li>
+<li>Tụ tách nguồn chỉ hiệu quả khi vòng nối ngắn: giảm điện cảm tổng từ 3,3 nH xuống 1 nH nâng tần số cộng hưởng từ khoảng 8,8 lên khoảng 15,9 MHz.</li>
+<li>Giữ GND liền khối, phân khu analog và số bằng vị trí linh kiện thay vì cắt GND.</li>
+<li>Các số liệu trong bài là ước lượng; xác nhận cấu trúc lớp, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ε</mi><mi>r</mi></msub><annotation encoding="application/x-tex">\varepsilon_r</annotation></semantics></math> và công cụ tính trở kháng với nhà sản xuất PCB.</li>
+</ul>
+</section>
+<section id="a2-gợi-ý-đọc-tiếp" class="level2 next">
+<h2>Gợi ý đọc tiếp</h2>
+<ul>
+<li>Thiết kế đường vi sai (USB, Ethernet): trở kháng vi sai, độ dài đồng đều.</li>
+<li>Tụ tách nguồn nhiều giá trị và mô phỏng trở kháng mạng phân phối nguồn (PDN).</li>
+<li>Layout mạch đo analog chính xác: đường bảo vệ (guard ring) và Kelvin.</li>
+</ul>
+</section>
+<section id="a2-nguồn-tham-khảo" class="level2 refs">
+<h2>Nguồn tham khảo</h2>
+<ul>
+<li>Tiêu chuẩn IPC-2141 (thiết kế bảng mạch tốc độ cao có kiểm soát trở kháng): cần kiểm tra lại công thức và phạm vi áp dụng trong phiên bản mới nhất.</li>
+<li>Ghi chú ứng dụng của Analog Devices và Texas Instruments về nối đất, bố trí mạch hỗn hợp và ADC (ví dụ tài liệu “grounding” và “PCB layout” của các hãng): cần bổ sung mã tài liệu cụ thể.</li>
+<li>Henry Ott, “Electromagnetic Compatibility Engineering”; Eric Bogatin, “Signal and Power Integrity - Simplified” cho nền tảng về diện tích vòng, điện cảm via và tụ tách nguồn.</li>
+</ul>
+</section>
+</div>
+  <a class="totop" href="#top">↑ Về đầu trang</a>
+</article>
+<article id="a3" class="post a3">
+  <header class="post-head">
+    <div class="post-num">Bài 03</div>
+    <div class="chips"><span class="chip cat">Mạch analog & đo lường</span><span class="chip lvl">Mức Trung bình</span><span class="chip">⏱ 10 phút đọc</span></div>
+    <h2 class="post-title">Op-amp khuếch đại đảo và không đảo: chọn điện trở, băng thông GBW, offset và dòng phân cực</h2>
+    <p class="lede">Thiết kế mạch khuếch đại op-amp đảo và không đảo: tính độ lợi, chọn điện trở, băng thông GBW, slew rate, offset, dòng phân cực và nhiễu, kèm ví dụ số cụ thể.</p>
+    <ul class="tags"><li>#op-amp</li><li>#khuếch đại không đảo</li><li>#khuếch đại đảo</li><li>#GBW</li><li>#điện áp offset</li><li>#dòng phân cực</li></ul>
+  </header>
+  <div class="post-body"><p>Khuếch đại tín hiệu cảm biến nhỏ lên mức đủ cho ADC là việc làm gần như hàng ngày của kỹ sư phần cứng. Công thức độ lợi chỉ có một dòng: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mn>1</mn><mo>+</mo><msub><mi>R</mi><mi>f</mi></msub><mi>/</mi><msub><mi>R</mi><mi>g</mi></msub></mrow><annotation encoding="application/x-tex">G = 1 + R_f/R_g</annotation></semantics></math>. Nhưng khi board làm ra thì tín hiệu méo, offset lệch, băng thông không đủ, hay nhiễu lớn hơn dự tính. Những vấn đề đó không nằm ở công thức độ lợi mà ở các thông số “phụ” của op-amp: GBW, slew rate, điện áp offset, dòng phân cực. Bài này đi từ công thức cơ bản đến từng thông số, bằng một ví dụ xuyên suốt: khuếch đại tín hiệu cảm biến 0 đến 100 mV lên 0 đến khoảng 3 V cho ADC.</p><div class="stats"><div class="stat"><b>29,7</b><span>độ lợi với R<sub>f</sub> 28,7 kΩ và R<sub>g</sub> 1 kΩ</span></div><div class="stat"><b>33,7 kHz</b><span>băng thông ở độ lợi 29,7 với GBW 1 MHz</span></div><div class="stat"><b>29,7 mV</b><span>sai số ở ngõ ra do V<sub>os</sub> 1 mV (37 LSB của ADC 12 bit)</span></div><div class="stat"><b>0,19 %</b><span>sai số độ lợi khi dùng điện trở 0,1%</span></div></div>
+<section id="a3-kiến-thức-nền-cần-có" class="level2 basics">
+<h2>Kiến thức nền cần có</h2>
+<ul>
+<li>Op-amp lý tưởng có độ lợi vòng hở vô hạn, trở kháng vào vô hạn và hai đầu vào ở cùng điện áp khi có hồi tiếp âm (khái niệm “đoản mạch ảo”). Op-amp thật có độ lợi hữu hạn giảm theo tần số, trở kháng vào hữu hạn, và các sai số như offset.</li>
+<li>Hồi tiếp âm: lấy một phần tín hiệu ra đưa về đầu vào đảo (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>−</mo><annotation encoding="application/x-tex">-</annotation></semantics></math>) để ổn định độ lợi.</li>
+<li>Điện trở chuẩn: dãy E24, E96; tụ và điện trở có dung sai.</li>
+</ul>
+</section>
+<section id="a3-hai-cấu-hình-cơ-bản" class="level2 ">
+<h2>1. Hai cấu hình cơ bản</h2>
+<section id="a3-khuếch-đại-không-đảo-non-inverting" class="level3">
+<h3>Khuếch đại không đảo (non-inverting)</h3>
+<p>Tín hiệu vào chân không đảo (+); điện trở <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>f</mi></msub><annotation encoding="application/x-tex">R_f</annotation></semantics></math> nối từ ngõ ra về chân đảo, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>g</mi></msub><annotation encoding="application/x-tex">R_g</annotation></semantics></math> nối từ chân đảo xuống GND hoặc điểm tham chiếu:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mn>1</mn><mo>+</mo><mfrac><msub><mi>R</mi><mi>f</mi></msub><msub><mi>R</mi><mi>g</mi></msub></mfrac></mrow><annotation encoding="application/x-tex">G = 1 + \frac{R_f}{R_g}</annotation></semantics></math></p>
+<p>Đặc điểm: độ lợi luôn <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>≥</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\geq 1</annotation></semantics></math>, trở kháng vào rất cao (hợp để nối cảm biến không muốn bị tải), ngõ ra cùng pha với đầu vào.</p>
+</section>
+<section id="a3-khuếch-đại-đảo-inverting" class="level3">
+<h3>Khuếch đại đảo (inverting)</h3>
+<p>Tín hiệu vào qua <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><annotation encoding="application/x-tex">R_{in}</annotation></semantics></math> tới chân đảo (−), chân không đảo nối tham chiếu (GND hoặc điện áp giữa nguồn):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mo>−</mo><mfrac><msub><mi>R</mi><mi>f</mi></msub><msub><mi>R</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub></mfrac></mrow><annotation encoding="application/x-tex">G = -\frac{R_f}{R_{in}}</annotation></semantics></math></p>
+<p>Đặc điểm: độ lợi có thể nhỏ hơn 1 (suy giảm), trở kháng vào bằng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><annotation encoding="application/x-tex">R_{in}</annotation></semantics></math> (không cao), ngõ ra ngược pha. Hợp để cộng tín hiệu và để đặt tham chiếu linh hoạt.</p>
+<figure class="fig"><svg viewBox="0 0 760 292" role="img" aria-label="Hai cấu hình khuếch đại op-amp: không đảo và đảo" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="190" y="20" class="tx b" text-anchor="middle">Không đảo: G = 1 + R<tspan class="sub">f</tspan>/R<tspan class="sub">g</tspan> = 29,7</text><polygon points="150,70 150,170 260,120.0" class="a3 fl-soft"/><text x="158" y="100" class="tx b">+</text><text x="158" y="152" class="tx b">−</text><text x="14" y="99" class="tx b">V<tspan class="sub">in</tspan></text><line x1="50" y1="95" x2="150" y2="95" class="ln"/><line x1="260" y1="120" x2="340" y2="120" class="ln"/><circle cx="320" cy="120" r="3.5" class="fl-ink"/><text x="346" y="124" class="tx b">V<tspan class="sub">out</tspan></text><path d="M320,120 L320,205 L100,205 L100,145 L150,145" class="a3" fill="none"/><circle cx="100" cy="145" r="3.5" class="fl-ink"/><rect x="190" y="196.0" width="60" height="18" rx="3" class="a3 fl-bg"/><text x="220" y="186" class="ta3 b" text-anchor="middle">R<tspan class="sub">f</tspan> 28,7 kΩ</text><line x1="100" y1="145" x2="90" y2="145" class="ln"/><line x1="90" y1="145" x2="30" y2="145" class="ln"/><rect x="40" y="136.0" width="50" height="18" rx="3" class="a3 fl-bg"/><line x1="30" y1="145" x2="30" y2="165" class="ln"/><line x1="16" y1="165" x2="44" y2="165" class="ln thick"/><line x1="21" y1="171" x2="39" y2="171" class="ln"/><line x1="26" y1="177" x2="34" y2="177" class="ln"/><text x="65" y="122" class="ta3 b" text-anchor="middle">R<tspan class="sub">g</tspan> 1 kΩ</text><line x1="380" y1="14" x2="380" y2="236" class="grid"/><text x="570" y="20" class="tx b" text-anchor="middle">Đảo: G = −R<tspan class="sub">f</tspan>/R<tspan class="sub">in</tspan> = −10</text><polygon points="540,70 540,170 650,120.0" class="a3 fl-soft"/><text x="548" y="100" class="tx b">−</text><text x="548" y="152" class="tx b">+</text><text x="394" y="99" class="tx b">V<tspan class="sub">in</tspan></text><line x1="430" y1="95" x2="540" y2="95" class="ln"/><rect x="450" y="86.0" width="54" height="18" rx="3" class="a3 fl-bg"/><text x="477" y="74" class="ta3 b" text-anchor="middle">R<tspan class="sub">in</tspan> 10 kΩ</text><circle cx="520" cy="95" r="3.5" class="fl-ink"/><line x1="540" y1="145" x2="520" y2="145" class="ln"/><line x1="520" y1="145" x2="520" y2="180" class="ln"/><line x1="506" y1="180" x2="534" y2="180" class="ln thick"/><line x1="511" y1="186" x2="529" y2="186" class="ln"/><line x1="516" y1="192" x2="524" y2="192" class="ln"/><line x1="650" y1="120" x2="730" y2="120" class="ln"/><circle cx="700" cy="120" r="3.5" class="fl-ink"/><text x="708" y="112" class="tx b">V<tspan class="sub">out</tspan></text><path d="M520,95 L520,58 L700,58 L700,120" class="a3" fill="none"/><rect x="570" y="49.0" width="70" height="18" rx="3" class="a3 fl-bg"/><text x="605" y="44" class="ta3 b" text-anchor="middle">R<tspan class="sub">f</tspan> 100 kΩ</text><text x="20" y="262" class="tm">Không đảo: trở kháng vào rất cao, ngõ ra cùng pha với ngõ vào.</text><text x="20" y="282" class="tm">Đảo: trở kháng vào = R<tspan class="sub">in</tspan> = 10 kΩ, ngõ ra ngược pha. Giá trị điện trở là ví dụ.</text></svg><figcaption>Hình 1. Khuếch đại đảo và không đảo: độ lợi do điện trở hồi tiếp quyết định, không phụ thuộc op-amp khi độ lợi vòng hở đủ lớn.</figcaption></figure>
+</section>
+</section>
+<section id="a3-chọn-điện-trở-cho-ví-dụ" class="level2 ">
+<h2>2. Chọn điện trở cho ví dụ</h2>
+<p>Yêu cầu: tín hiệu 0 đến 100 mV, ADC 0 đến 3,3 V; để dư biên chọn đầu ra tối đa khoảng 3 V, cần độ lợi khoảng 30. Chọn mạch không đảo:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><msub><mi>R</mi><mi>f</mi></msub><msub><mi>R</mi><mi>g</mi></msub></mfrac><mo>=</mo><mi>G</mi><mo>−</mo><mn>1</mn><mo>=</mo><mn>29</mn></mrow><annotation encoding="application/x-tex">\frac{R_f}{R_g} = G - 1 = 29</annotation></semantics></math></p>
+<p>Chọn <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>g</mi></msub><mo>=</mo><mn>1</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_g = 1\ \text{k}\Omega</annotation></semantics></math> và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>f</mi></msub><mo>=</mo><mn>28,7</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_f = 28{,}7\ \text{k}\Omega</annotation></semantics></math> (giá trị chuẩn dãy E96). Độ lợi thực: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mn>1</mn><mo>+</mo><mn>28,7</mn><mo>=</mo><mn>29,7</mn></mrow><annotation encoding="application/x-tex">G = 1 + 28{,}7 = 29{,}7</annotation></semantics></math>, đầu ra tối đa <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,1</mn><mo>×</mo><mn>29,7</mn><mo>=</mo><mn>2,97</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V</mtext></mrow><annotation encoding="application/x-tex">0{,}1 \times 29{,}7 = 2{,}97\ \text{V}</annotation></semantics></math>.</p>
+<p>Nguyên tắc chọn giá trị điện trở:</p>
+<ul>
+<li>Điện trở quá lớn (hàng trăm kΩ trở lên) làm tăng nhiễu nhiệt và gặp ảnh hưởng của dòng phân cực và điện dung ký sinh.</li>
+<li>Điện trở quá nhỏ (dưới vài trăm Ω) làm tải ngõ ra của op-amp và tiêu thụ dòng.</li>
+<li>Khoảng từ vài trăm Ω đến vài chục kΩ là hợp lý; ở ví dụ này <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>f</mi></msub><annotation encoding="application/x-tex">R_f</annotation></semantics></math> khoảng 29 kΩ và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>g</mi></msub><annotation encoding="application/x-tex">R_g</annotation></semantics></math> 1 kΩ.</li>
+</ul>
+<section id="a3-sai-số-độ-lợi-do-dung-sai-điện-trở" class="level3">
+<h3>Sai số độ lợi do dung sai điện trở</h3>
+<p>Độ lợi phụ thuộc tỉ số điện trở. Với điện trở 1%, xét tình huống xấu nhất (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>f</mi></msub><annotation encoding="application/x-tex">R_f</annotation></semantics></math> lớn nhất, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>g</mi></msub><annotation encoding="application/x-tex">R_g</annotation></semantics></math> nhỏ nhất và ngược lại):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>G</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><mo>=</mo><mn>1</mn><mo>+</mo><mfrac><mrow><mn>28,7</mn><mo>×</mo><mn>0,99</mn></mrow><mrow><mn>1</mn><mo>×</mo><mn>1,01</mn></mrow></mfrac><mo>≈</mo><mn>29,13</mn><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>G</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mo>=</mo><mn>1</mn><mo>+</mo><mfrac><mrow><mn>28,7</mn><mo>×</mo><mn>1,01</mn></mrow><mrow><mn>1</mn><mo>×</mo><mn>0,99</mn></mrow></mfrac><mo>≈</mo><mn>30,28</mn></mrow><annotation encoding="application/x-tex">G_{min} = 1 + \frac{28{,}7 \times 0{,}99}{1 \times 1{,}01} \approx 29{,}13, \qquad G_{max} = 1 + \frac{28{,}7 \times 1{,}01}{1 \times 0{,}99} \approx 30{,}28</annotation></semantics></math></p>
+<p>Sai số độ lợi từ −1,91% đến +1,95%. Với điện trở 0,1% thì còn khoảng ±0,19%. Nếu chỉ cần độ chính xác vài phần trăm, 1% là đủ; nếu cần đo chính xác hơn, dùng 0,1% hoặc mạng điện trở khớp (resistor network) vì sai số tỉ lệ khớp nhau tốt hơn sai số tuyệt đối.</p>
+</section>
+</section>
+<section id="a3-băng-thông-gbw-và-độ-lợi" class="level2 ">
+<h2>3. Băng thông: GBW và độ lợi</h2>
+<p>Op-amp có tích số độ lợi và băng thông (<strong>GBW</strong>, gain-bandwidth product) gần như không đổi. Băng thông khi có hồi tiếp là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mo>−</mo><mn>3</mn><mi>d</mi><mi>B</mi></mrow></msub><mo>≈</mo><mi>G</mi><mi>B</mi><mi>W</mi><mi>/</mi><mi>G</mi></mrow><annotation encoding="application/x-tex">f_{-3dB} \approx GBW / G</annotation></semantics></math>. Với op-amp GBW giả định là 1 MHz và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mn>29,7</mn></mrow><annotation encoding="application/x-tex">G = 29{,}7</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mo>−</mo><mn>3</mn><mi>d</mi><mi>B</mi></mrow></msub><mo>=</mo><mfrac><mrow><mn>1</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">MHz</mtext></mrow><mrow><mn>29,7</mn></mrow></mfrac><mo>≈</mo><mn>33,7</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">kHz</mtext></mrow><annotation encoding="application/x-tex">f_{-3dB} = \frac{1\ \text{MHz}}{29{,}7} \approx 33{,}7\ \text{kHz}</annotation></semantics></math></p>
+<p>Nếu tín hiệu cần khuếch đại có tần số tối đa 10 kHz thì GBW tối thiểu là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>10</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">kHz</mtext><mo>×</mo><mn>29,7</mn><mo>≈</mo><mn>297</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">kHz</mtext></mrow><annotation encoding="application/x-tex">10\ \text{kHz} \times 29{,}7 \approx 297\ \text{kHz}</annotation></semantics></math>, nhưng ở sát giới hạn đó biên độ đã giảm đáng kể và pha trễ nhiều. Quy tắc thực tế: chọn GBW lớn hơn khoảng 10 lần, tức khoảng 3 MHz, để độ lợi phẳng trong dải tín hiệu.</p>
+<section id="a3-slew-rate" class="level3">
+<h3>Slew rate</h3>
+<p><strong>Slew rate</strong> (SR) là tốc độ thay đổi điện áp ngõ ra tối đa. Với tín hiệu sin biên độ đỉnh <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>p</mi><mi>k</mi></mrow></msub><annotation encoding="application/x-tex">V_{pk}</annotation></semantics></math> ở tần số <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math>, cần:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mi>R</mi><mo>≥</mo><mn>2</mn><mi>π</mi><mi>f</mi><msub><mi>V</mi><mrow><mi>p</mi><mi>k</mi></mrow></msub><mo>=</mo><mn>2</mn><mi>π</mi><mo>×</mo><mn>10</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup><mo>×</mo><mn>1,5</mn><mo>≈</mo><mn>9,4</mn><mo>×</mo><msup><mn>10</mn><mn>4</mn></msup><mspace width="0.222em"></mspace><mtext mathvariant="normal">V/s</mtext><mo>=</mo><mn>0,094</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">V/</mtext><mi>μ</mi><mtext mathvariant="normal">s</mtext></mrow><annotation encoding="application/x-tex">SR \geq 2\pi f V_{pk} = 2\pi \times 10\times10^{3} \times 1{,}5 \approx 9{,}4\times10^{4}\ \text{V/s} = 0{,}094\ \text{V/}\mu\text{s}</annotation></semantics></math></p>
+<p>Nếu op-amp có SR 0,5 V/µs (giả định) thì dư rất nhiều. SR thường chỉ giới hạn khi biên độ lớn và tần số cao; khi SR không đủ, sóng sin bị méo thành sóng tam giác.</p>
+<figure class="fig"><svg viewBox="0 0 760 300" role="img" aria-label="Đáp ứng độ lợi vòng hở và vòng kín của op-amp với GBW 1 MHz" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><line x1="90" y1="250" x2="700" y2="250" class="ln" marker-end="url(#arr)"/><line x1="90" y1="250" x2="90" y2="30" class="ln" marker-end="url(#arr)"/><text x="700" y="270" class="tm" text-anchor="end"></text><text x="98" y="34" class="tm">dB</text><line x1="90" y1="40" x2="90" y2="250" class="grid"/><text x="90" y="270" class="tm" text-anchor="middle">10</text><line x1="190" y1="40" x2="190" y2="250" class="grid"/><text x="190" y="270" class="tm" text-anchor="middle">100</text><line x1="290" y1="40" x2="290" y2="250" class="grid"/><text x="290" y="270" class="tm" text-anchor="middle">1k</text><line x1="390" y1="40" x2="390" y2="250" class="grid"/><text x="390" y="270" class="tm" text-anchor="middle">10k</text><line x1="490" y1="40" x2="490" y2="250" class="grid"/><text x="490" y="270" class="tm" text-anchor="middle">100k</text><line x1="590" y1="40" x2="590" y2="250" class="grid"/><text x="590" y="270" class="tm" text-anchor="middle">1M</text><line x1="690" y1="40" x2="690" y2="250" class="grid"/><text x="690" y="270" class="tm" text-anchor="middle">10M</text><text x="700" y="290" class="tm" text-anchor="end">tần số (Hz)</text><line x1="90" y1="250.0" x2="690" y2="250.0" class="grid"/><text x="82" y="254.0" class="tm" text-anchor="end">0</text><line x1="90" y1="210.0" x2="690" y2="210.0" class="grid"/><text x="82" y="214.0" class="tm" text-anchor="end">20</text><line x1="90" y1="170.0" x2="690" y2="170.0" class="grid"/><text x="82" y="174.0" class="tm" text-anchor="end">40</text><line x1="90" y1="130.0" x2="690" y2="130.0" class="grid"/><text x="82" y="134.0" class="tm" text-anchor="end">60</text><line x1="90" y1="90.0" x2="690" y2="90.0" class="grid"/><text x="82" y="94.0" class="tm" text-anchor="end">80</text><line x1="90" y1="50.0" x2="690" y2="50.0" class="grid"/><text x="82" y="54.0" class="tm" text-anchor="end">100</text><path d="M90,50 L590,250" class="a3 thick" fill="none"/><text x="190" y="82" class="ta3 b">vòng hở: GBW = 1 MHz, −20 dB/decade</text><line x1="90" y1="191.1" x2="442.8" y2="191.1" class="wr thick"/><circle cx="442.8" cy="191.1" r="5" class="fl-wr"/><text x="94" y="183.1" class="twr b">độ lợi vòng kín 29,7 (29,5 dB)</text><text x="450.8" y="213.1" class="twr b">f₋₃dB ≈ 33,7 kHz</text></svg><figcaption>Hình 2. Đồ thị Bode: đường độ lợi vòng kín cắt đường GBW 1 MHz, cho băng thông khoảng 33,7 kHz ở độ lợi 29,7.</figcaption></figure>
+</section>
+</section>
+<section id="a3-điện-áp-offset-sai-số-cố-định-bị-nhân-lên" class="level2 ">
+<h2>4. Điện áp offset: sai số cố định bị nhân lên</h2>
+<p>Op-amp thật có <strong>điện áp offset</strong> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>o</mi><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">V_{os}</annotation></semantics></math>: một điện áp nhỏ ở đầu vào tương đương một nguồn mắc nối tiếp ở chân vào, làm ngõ ra lệch khi đầu vào bằng 0. Offset được khuếch đại cùng độ lợi (với mạch không đảo, nhân với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>+</mo><msub><mi>R</mi><mi>f</mi></msub><mi>/</mi><msub><mi>R</mi><mi>g</mi></msub></mrow><annotation encoding="application/x-tex">1 + R_f/R_g</annotation></semantics></math>). Giả sử <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>o</mi><mi>s</mi></mrow></msub><mo>=</mo><mn>1</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">V_{os} = 1\ \text{mV}</annotation></semantics></math> (giá trị minh họa, cần xem datasheet):</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi><mo>,</mo><mi>e</mi><mi>r</mi><mi>r</mi></mrow></msub><mo>=</mo><msub><mi>V</mi><mrow><mi>o</mi><mi>s</mi></mrow></msub><mo>×</mo><mi>G</mi><mo>=</mo><mn>1</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext><mo>×</mo><mn>29,7</mn><mo>≈</mo><mn>29,7</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">V_{out,err} = V_{os} \times G = 1\ \text{mV} \times 29{,}7 \approx 29{,}7\ \text{mV}</annotation></semantics></math></p>
+<p>Sai số này bằng 0,99% của 3 V, và so với một LSB của ADC 12 bit (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,806</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">0{,}806\ \text{mV}</annotation></semantics></math>) là khoảng 37 LSB. Với tín hiệu 0 đến 100 mV, offset 1 mV tương đương 1% toàn thang.</p>
+<figure class="fig"><svg viewBox="0 0 760 306" role="img" aria-label="Ngân sách sai số ở ngõ ra của mạch khuếch đại G = 29,7" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ink"/></marker></defs><text x="320" y="49" class="tx" text-anchor="end">Sai số độ lợi (điện trở 1%)</text><rect x="330" y="30" width="376" height="26" rx="4" class="fl-wr"/><text x="714" y="49" class="tx b">58 mV</text><text x="320" y="93" class="tx" text-anchor="end">Offset 1 mV × 29,7</text><rect x="330" y="74" width="347" height="26" rx="4" class="fl-wr"/><text x="685" y="93" class="tx b">29,7 mV</text><text x="320" y="137" class="tx" text-anchor="end">Dòng phân cực 100 nA</text><rect x="330" y="118" width="246" height="26" rx="4" class="fl-a3"/><text x="584" y="137" class="tx b">2,9 mV</text><text x="320" y="181" class="tx" text-anchor="end">1 LSB của ADC 12 bit</text><rect x="330" y="162" width="191" height="26" rx="4" class="fl-mu"/><text x="529" y="181" class="tx b">0,806 mV</text><text x="320" y="225" class="tx" text-anchor="end">Nhiễu 74 µV rms</text><rect x="330" y="206" width="87" height="26" rx="4" class="fl-a3"/><text x="425" y="225" class="tx b">0,074 mV</text><line x1="330" y1="24" x2="330" y2="252" class="grid"/><text x="330" y="272" class="tm" text-anchor="middle">0,01</text><line x1="430" y1="24" x2="430" y2="252" class="grid"/><text x="430" y="272" class="tm" text-anchor="middle">0,1</text><line x1="530" y1="24" x2="530" y2="252" class="grid"/><text x="530" y="272" class="tm" text-anchor="middle">1</text><line x1="630" y1="24" x2="630" y2="252" class="grid"/><text x="630" y="272" class="tm" text-anchor="middle">10</text><line x1="730" y1="24" x2="730" y2="252" class="grid"/><text x="730" y="272" class="tm" text-anchor="middle">100</text><text x="730" y="290" class="tm" text-anchor="end">sai số ở ngõ ra (mV, thang log)</text><text x="20" y="292" class="tm">Sai số độ lợi tính ở toàn thang 3 V</text></svg><figcaption>Hình 3. Ngân sách sai số: offset điện áp đóng góp lớn nhất ở độ lợi cao, rồi tới dòng phân cực và nhiễu.</figcaption></figure>
+<p>Cách xử lý:</p>
+<ul>
+<li>Chọn op-amp có offset nhỏ (loại chính xác, vài chục µV hoặc thấp hơn). Op-amp chopper hoặc zero-drift có offset rất nhỏ nhưng có nhiễu chopper cần xem xét.</li>
+<li>Hiệu chuẩn offset bằng phần mềm: đọc giá trị khi đầu vào bằng 0 và trừ đi. Hiệu quả cho offset cố định nhưng không loại được trôi theo nhiệt độ.</li>
+<li>Offset thay đổi theo nhiệt độ (offset drift, µV/°C): đưa vào dự toán sai số nếu board hoạt động trong dải nhiệt rộng.</li>
+</ul>
+</section>
+<section id="a3-dòng-phân-cực-ảnh-hưởng-của-điện-trở-nguồn" class="level2 ">
+<h2>5. Dòng phân cực: ảnh hưởng của điện trở nguồn</h2>
+<p>Chân vào của op-amp có <strong>dòng phân cực</strong> (input bias current, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mi>b</mi></msub><annotation encoding="application/x-tex">I_b</annotation></semantics></math>): với op-amp lưỡng cực là vài chục nA tới vài trăm nA, với loại ngõ vào CMOS hoặc JFET là pA. Dòng này chạy qua các điện trở mà chân vào thấy, tạo ra điện áp lệch.</p>
+<p>Với ví dụ, giả sử <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mi>b</mi></msub><mo>=</mo><mn>100</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nA</mtext></mrow><annotation encoding="application/x-tex">I_b = 100\ \text{nA}</annotation></semantics></math> (minh họa). Điện trở thấy từ chân đảo là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>f</mi></msub><mo>∥</mo><msub><mi>R</mi><mi>g</mi></msub><mo>=</mo><mn>28,7</mn><mo>×</mo><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>28,7</mn><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>0,966</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_f \parallel R_g = 28{,}7 \times 1/(28{,}7 + 1) \approx 0{,}966\ \text{k}\Omega</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>e</mi><mi>r</mi><mi>r</mi><mo>,</mo><mi>i</mi><mi>n</mi></mrow></msub><mo>=</mo><msub><mi>I</mi><mi>b</mi></msub><mo>×</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>R</mi><mi>f</mi></msub><mo>∥</mo><msub><mi>R</mi><mi>g</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>100</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nA</mtext><mo>×</mo><mn>966</mn><mspace width="0.222em"></mspace><mi>Ω</mi><mo>≈</mo><mn>0,097</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">V_{err,in} = I_b \times (R_f \parallel R_g) = 100\ \text{nA} \times 966\ \Omega \approx 0{,}097\ \text{mV}</annotation></semantics></math></p>
+<p>Sai số ngõ ra khoảng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0,097</mn><mo>×</mo><mn>29,7</mn><mo>≈</mo><mn>2,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">0{,}097 \times 29{,}7 \approx 2{,}9\ \text{mV}</annotation></semantics></math>, nhỏ hơn nhiều so với offset 29,7 mV. Nhưng nếu nguồn tín hiệu có điện trở trong lớn, ví dụ cảm biến có <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>s</mi></msub><mo>=</mo><mn>10</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_s = 10\ \text{k}\Omega</annotation></semantics></math> nối vào chân không đảo: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>e</mi><mi>r</mi><mi>r</mi></mrow></msub><mo>=</mo><mn>100</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nA</mtext><mo>×</mo><mn>10</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi><mo>=</mo><mn>1</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">mV</mtext></mrow><annotation encoding="application/x-tex">V_{err} = 100\ \text{nA} \times 10\ \text{k}\Omega = 1\ \text{mV}</annotation></semantics></math>, khi nhân với độ lợi 29,7 cho ra gần 29,7 mV ở ngõ ra. Cách xử lý:</p>
+<ul>
+<li>Cân bằng điện trở thấy từ hai chân vào: chọn điện trở nối tiếp ở chân kia sao cho hai chân thấy cùng điện trở, để hai dòng phân cực gây sụt áp triệt tiêu nhau (chỉ cần dùng dòng offset <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mrow><mi>o</mi><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">I_{os}</annotation></semantics></math> thay vì <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mi>b</mi></msub><annotation encoding="application/x-tex">I_b</annotation></semantics></math>).</li>
+<li>Với nguồn tín hiệu trở kháng cao (cảm biến, điện cực), chọn op-amp có ngõ vào CMOS hoặc JFET (dòng phân cực pA).</li>
+</ul>
+</section>
+<section id="a3-nhiễu-và-độ-ổn-định" class="level2 ">
+<h2>6. Nhiễu và độ ổn định</h2>
+<section id="a3-nhiễu" class="level3">
+<h3>Nhiễu</h3>
+<p>Điện trở tạo nhiễu nhiệt <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mi>n</mi></msub><mo>=</mo><msqrt><mrow><mn>4</mn><mi>k</mi><mi>T</mi><mi>R</mi></mrow></msqrt></mrow><annotation encoding="application/x-tex">e_n = \sqrt{4kTR}</annotation></semantics></math>. Với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>f</mi></msub><mo>∥</mo><msub><mi>R</mi><mi>g</mi></msub><mo>=</mo><mn>966</mn><mspace width="0.222em"></mspace><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_f \parallel R_g = 966\ \Omega</annotation></semantics></math> ở 300 K: khoảng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4,0</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nV</mtext><mi>/</mi><msqrt><mtext mathvariant="normal">Hz</mtext></msqrt></mrow><annotation encoding="application/x-tex">4{,}0\ \text{nV}/\sqrt{\text{Hz}}</annotation></semantics></math>. Nếu op-amp có nhiễu điện áp ngõ vào giả định <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>10</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nV</mtext><mi>/</mi><msqrt><mtext mathvariant="normal">Hz</mtext></msqrt></mrow><annotation encoding="application/x-tex">10\ \text{nV}/\sqrt{\text{Hz}}</annotation></semantics></math>, tổng nhiễu quy về đầu vào là <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mrow><msup><mn>10</mn><mn>2</mn></msup><mo>+</mo><mn>4</mn><mo>,</mo><msup><mn>0</mn><mn>2</mn></msup></mrow></msqrt><mo>≈</mo><mn>10,8</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nV</mtext><mi>/</mi><msqrt><mtext mathvariant="normal">Hz</mtext></msqrt></mrow><annotation encoding="application/x-tex">\sqrt{10^2 + 4{,}0^2} \approx 10{,}8\ \text{nV}/\sqrt{\text{Hz}}</annotation></semantics></math>. Băng thông nhiễu tương đương <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mi>π</mi><mn>2</mn></mfrac><mo>×</mo><mn>33,7</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">kHz</mtext><mo>≈</mo><mn>52,9</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">kHz</mtext></mrow><annotation encoding="application/x-tex">\frac{\pi}{2} \times 33{,}7\ \text{kHz} \approx 52{,}9\ \text{kHz}</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>V</mi><mrow><mi>n</mi><mo>,</mo><mi>i</mi><mi>n</mi></mrow></msub><mo>=</mo><mn>10,8</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">nV</mtext><mi>/</mi><msqrt><mtext mathvariant="normal">Hz</mtext></msqrt><mo>×</mo><msqrt><mrow><mn>52,9</mn><mo>×</mo><msup><mn>10</mn><mn>3</mn></msup></mrow></msqrt><mo>≈</mo><mn>2,5</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V rms</mtext></mrow><annotation encoding="application/x-tex">V_{n,in} = 10{,}8\ \text{nV}/\sqrt{\text{Hz}} \times \sqrt{52{,}9\times10^3} \approx 2{,}5\ \mu\text{V rms}</annotation></semantics></math></p>
+<p>Quy ra ngõ ra: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2,5</mn><mo>×</mo><mn>29,7</mn><mo>≈</mo><mn>74</mn><mspace width="0.222em"></mspace><mi>μ</mi><mtext mathvariant="normal">V rms</mtext></mrow><annotation encoding="application/x-tex">2{,}5 \times 29{,}7 \approx 74\ \mu\text{V rms}</annotation></semantics></math>, nhỏ so với LSB ADC 806 µV. Nhiễu của mạch này không phải là nút thắt; offset mới là điểm chính.</p>
+</section>
+<section id="a3-ổn-định-với-điện-dung" class="level3">
+<h3>Ổn định với điện dung</h3>
+<p>Điện dung ký sinh ở chân đảo (cùng với điện trở hồi tiếp lớn) tạo cực làm giảm biên độ pha, đôi khi gây dao động. Giải pháp: thêm tụ <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mi>f</mi></msub><annotation encoding="application/x-tex">C_f</annotation></semantics></math> nhỏ (vài pF) song song <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>f</mi></msub><annotation encoding="application/x-tex">R_f</annotation></semantics></math>. Ví dụ với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mi>f</mi></msub><mo>=</mo><mn>10</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">pF</mtext></mrow><annotation encoding="application/x-tex">C_f = 10\ \text{pF}</annotation></semantics></math> và <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>R</mi><mi>f</mi></msub><mo>=</mo><mn>28,7</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">k</mtext><mi>Ω</mi></mrow><annotation encoding="application/x-tex">R_f = 28{,}7\ \text{k}\Omega</annotation></semantics></math>: cực ở <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>2</mn><mi>π</mi><mo>×</mo><mn>28,7</mn><mtext mathvariant="normal">k</mtext><mo>×</mo><mn>10</mn><mtext mathvariant="normal">p</mtext><mo stretchy="true" form="postfix">)</mo></mrow><mo>≈</mo><mn>555</mn><mspace width="0.222em"></mspace><mtext mathvariant="normal">kHz</mtext></mrow><annotation encoding="application/x-tex">1/(2\pi \times 28{,}7\text{k} \times 10\text{p}) \approx 555\ \text{kHz}</annotation></semantics></math>, cao hơn dải tín hiệu 10 kHz nhưng đủ để làm sạch phản hồi. Tải điện dung ở ngõ ra (cáp dài, đầu vào ADC) cũng gây mất ổn định: đặt một điện trở nối tiếp nhỏ (khoảng 50 Ω đến 100 Ω) giữa ngõ ra op-amp và tải; kiểm tra khả năng chịu tải điện dung trong datasheet.</p>
+</section>
+</section>
+<section id="a3-nguồn-đơn-và-giới-hạn-ngõ-ra" class="level2 ">
+<h2>7. Nguồn đơn và giới hạn ngõ ra</h2>
+<p>Hệ thống chạy nguồn đơn 3,3 V không có điện áp âm, nên tín hiệu vào và ra phải nằm trong dải điện áp đầu vào và đầu ra của op-amp:</p>
+<ul>
+<li>Chọn op-amp <strong>rail-to-rail</strong> ngõ ra (đầu ra tiến sát hai đường nguồn) và có dải ngõ vào gồm cả đường GND nếu tín hiệu bắt đầu từ 0 V.</li>
+<li>Đầu ra không bao giờ chạm đúng rail: có khoảng cách vài chục mV (giả định, cần xem datasheet). Tín hiệu 0 V ở đầu ra hay 3,3 V đều không đạt; thiết kế để ngõ ra nằm trong khoảng an toàn, ví dụ 0,1 V đến 3,2 V.</li>
+<li>Với khuếch đại đảo ở nguồn đơn, đặt chân không đảo ở điện áp giữa nguồn (ví dụ 1,65 V, tạo từ cầu chia điện trở có tụ lọc hoặc từ nguồn tham chiếu) và tính tín hiệu quanh điểm đó. Điểm tham chiếu giữa này cũng cần đệm bằng op-amp nếu tải lớn.</li>
+</ul>
+</section>
+<section id="a3-lỗi-thường-gặp-kinh-nghiệm-thực-tế" class="level2 pitfalls">
+<h2>Lỗi thường gặp &amp; kinh nghiệm thực tế</h2>
+<ul>
+<li>Chọn op-amp theo “giá rẻ” mà không kiểm tra GBW, băng thông giảm mạnh ở độ lợi lớn.</li>
+<li>Dùng điện trở hồi tiếp hàng trăm kΩ với dòng phân cực lớn, gây offset lớn.</li>
+<li>Bỏ qua offset khi khuếch đại tín hiệu cỡ mV, sai số vượt tín hiệu.</li>
+<li>Dùng op-amp không rail-to-rail ở nguồn đơn 3,3 V, ngõ ra bị cắt ở mức cao.</li>
+<li>Nối tải điện dung (cáp dài) trực tiếp vào ngõ ra, mạch dao động.</li>
+<li>Không có tụ tách nguồn 100 nF sát chân nguồn của op-amp.</li>
+<li>Dùng điện trở 5% hoặc 1% cho mạch cần độ chính xác độ lợi 0,1%.</li>
+<li>Chọn dựa trên bảng giá trị “điển hình” thay vì “tối đa” trong datasheet cho offset và dòng phân cực.</li>
+</ul>
+</section>
+<section id="a3-tổng-kết" class="level2 summary">
+<h2>Tổng kết</h2>
+<ul>
+<li>Không đảo: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mn>1</mn><mo>+</mo><msub><mi>R</mi><mi>f</mi></msub><mi>/</mi><msub><mi>R</mi><mi>g</mi></msub></mrow><annotation encoding="application/x-tex">G = 1 + R_f/R_g</annotation></semantics></math> (trở kháng vào cao); đảo: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mo>−</mo><msub><mi>R</mi><mi>f</mi></msub><mi>/</mi><msub><mi>R</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">G = -R_f/R_{in}</annotation></semantics></math> (trở kháng vào bằng <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><annotation encoding="application/x-tex">R_{in}</annotation></semantics></math>).</li>
+<li>Điện trở 1% làm độ lợi sai khoảng ±2% (29,13 đến 30,28 với <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mn>29,7</mn></mrow><annotation encoding="application/x-tex">G = 29{,}7</annotation></semantics></math>); 0,1% còn khoảng ±0,19%.</li>
+<li>Băng thông giảm theo độ lợi: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mrow><mo>−</mo><mn>3</mn><mi>d</mi><mi>B</mi></mrow></msub><mo>=</mo><mi>G</mi><mi>B</mi><mi>W</mi><mi>/</mi><mi>G</mi></mrow><annotation encoding="application/x-tex">f_{-3dB} = GBW/G</annotation></semantics></math>; chọn GBW lớn hơn khoảng 10 lần băng thông tín hiệu nhân độ lợi.</li>
+<li>Offset 1 mV nhân với độ lợi 29,7 thành 29,7 mV ở ngõ ra (khoảng 37 LSB ADC 12 bit); đây thường là nguồn sai số chính.</li>
+<li>Dòng phân cực gây sai số khi điện trở nguồn lớn: cân bằng điện trở hai chân vào hoặc dùng op-amp ngõ vào CMOS/JFET.</li>
+<li>Nguồn đơn cần op-amp rail-to-rail, giữ ngõ ra cách hai rail vài chục mV.</li>
+</ul>
+</section>
+<section id="a3-gợi-ý-đọc-tiếp" class="level2 next">
+<h2>Gợi ý đọc tiếp</h2>
+<ul>
+<li>Khuếch đại đo lường (instrumentation amplifier) và khuếch đại vi sai cho cảm biến cầu.</li>
+<li>Bộ lọc tích cực Sallen-Key bậc 2 dùng op-amp.</li>
+<li>Mạch đo dòng bằng shunt với bộ khuếch đại đo dòng (xem bài tuần 2).</li>
+</ul>
+</section>
+<section id="a3-nguồn-tham-khảo" class="level2 refs">
+<h2>Nguồn tham khảo</h2>
+<ul>
+<li>Ghi chú ứng dụng và sách hướng dẫn op-amp của Texas Instruments và Analog Devices (ví dụ tài liệu “Op Amps for Everyone” và “Op Amp Applications Handbook”): cần xác nhận tên và mã tài liệu đúng trước khi dẫn link.</li>
+<li>Datasheet của op-amp được chọn cho mạch: GBW, slew rate, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>V</mi><mrow><mi>o</mi><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">V_{os}</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>I</mi><mi>b</mi></msub><annotation encoding="application/x-tex">I_b</annotation></semantics></math>, nhiễu và khả năng chịu tải điện dung đều phải lấy từ đó.</li>
+<li>Horowitz và Hill, “The Art of Electronics” cho phân tích hồi tiếp và sai số op-amp.</li>
+</ul>
+</section>
+</div>
+  <a class="totop" href="#top">↑ Về đầu trang</a>
+</article></main>
+</div>
+<footer class="foot">Blog phần cứng · Tuần 5 · 09/11/2026 · Hình minh họa là sơ đồ nguyên lý, số liệu thật lấy theo datasheet linh kiện cụ thể.</footer>
+<script>
+(function(){
+  var bar=document.getElementById('bar');
+  function onScroll(){var h=document.documentElement;var p=h.scrollTop/(h.scrollHeight-h.clientHeight||1);bar.style.width=(p*100)+'%';}
+  document.addEventListener('scroll',onScroll,{passive:true});onScroll();
+  var links=[].slice.call(document.querySelectorAll('.toc ol a'));
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(l){l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id);});}});},{rootMargin:'-20% 0px -70% 0px'});
+    links.forEach(function(l){var t=document.getElementById(l.getAttribute('href').slice(1));if(t)io.observe(t);});
+  }
+})();
+</script>
+</body>
+</html>
